@@ -79,6 +79,9 @@ const CATEGORY_RULES: [RegExp, string][] = [
 const categorise = (text: string): string => CATEGORY_RULES.find(([re]) => re.test(text))?.[1] ?? 'Other';
 
 const TOWNS: Record<string, string> = {
+  'ongata rongai': 'Kajiado', rongai: 'Kajiado', syokimau: 'Machakos', mlolongo: 'Machakos', utawala: 'Nairobi', gigiri: 'Nairobi', runda: 'Nairobi',
+  muthaiga: 'Nairobi', kileleshwa: 'Nairobi', 'south c': 'Nairobi', 'south b': 'Nairobi', kasarani: 'Nairobi', roysambu: 'Nairobi', donholm: 'Nairobi',
+  eastleigh: 'Nairobi', kawangware: 'Nairobi', githurai: 'Nairobi', dagoretti: 'Nairobi', mtwapa: 'Kilifi', diani: 'Kwale', ukunda: 'Kwale',
   westlands: 'Nairobi', kilimani: 'Nairobi', 'upper hill': 'Nairobi', karen: 'Nairobi', 'industrial area': 'Nairobi', lavington: 'Nairobi',
   parklands: 'Nairobi', embakasi: 'Nairobi', ruaraka: 'Nairobi', langata: 'Nairobi', cbd: 'Nairobi', nyali: 'Mombasa', bamburi: 'Mombasa',
   changamwe: 'Mombasa', eldoret: 'Uasin Gishu', thika: 'Kiambu', ruiru: 'Kiambu', juja: 'Kiambu', kikuyu: 'Kiambu', limuru: 'Kiambu',
@@ -146,9 +149,9 @@ function levelFrom(title: string, type: string, exp: number | null): { level: Le
   if (type === 'Internship') return { level: 'Internship', inferred: false };
   if (type === 'Graduate Trainee' || /\bgraduate\b/.test(t)) return { level: 'Graduate', inferred: false };
   if (/\b(director|chief|\bceo\b|\bcfo\b|\bcto\b|general manager|executive director|managing)\b/.test(t)) return { level: 'Executive', inferred: true };
+  if (/\b(junior|jr)\b/.test(t)) return { level: 'Junior', inferred: true };
   if (/\b(manager|head of|head,|team lead|supervisor)\b/.test(t)) return { level: 'Managerial', inferred: true };
   if (/\b(senior|snr|principal|sr\.)\b/.test(t)) return { level: 'Senior', inferred: true };
-  if (/\b(junior|jr)\b/.test(t)) return { level: 'Junior', inferred: true };
   if (/\b(trainee|assistant|clerk)\b|entry[- ]level/.test(t)) return { level: 'Entry-level', inferred: true };
   if (/mid[- ]level/.test(t)) return { level: 'Mid-level', inferred: true };
   if (exp !== null) return { level: exp === 0 ? 'Entry-level' : exp <= 2 ? 'Junior' : exp <= 5 ? 'Mid-level' : 'Senior', inferred: true };

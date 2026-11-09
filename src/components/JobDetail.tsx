@@ -76,7 +76,6 @@ export function JobDetail({ job, saved, tracked, onClose, onSave, onTrack, log }
           </div>
           <p className="mt-2 text-[11px] text-dim">A listing on a well-known site is not proof the vacancy is still open. Confirm on the original page.</p>
           <button onClick={() => openExternal(job.sourceUrl)} className="mt-2 text-xs text-cyan underline hover:text-orange">Open source site</button>
-          <p className="mt-3 border-t border-line/30 pt-2 text-[11px] text-dim">Sample listing (Phase 1). Links open the source homepage, not a real vacancy.</p>
         </Section>
       </aside>
     </div>

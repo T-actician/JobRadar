@@ -154,3 +154,18 @@ test('crawl merges listing-card data over the detail page', async () => {
   assert.equal(b.employer, 'Second Co');
   assert.equal(b.location, 'Nakuru');
 });
+
+test('BrighterMonday card: place, type and salary on separate lines still parse', () => {
+  const c = brightermondayCard(['Sales Executive', 'Centum Real Estate', 'Posted 1 week ago', 'Sales - Driven sales professional', 'Nairobi', 'Full Time', 'KSh 60,000 - 80,000', 'Apply'], 'Sales Executive');
+  assert.equal(c.employer, 'Centum Real Estate');
+  assert.equal(c.location, 'Nairobi');
+  assert.equal(c.typeText, 'Full Time');
+  assert.equal(c.salaryText, 'KSh 60,000 - 80,000');
+  const j = normalizeJob({ source: 'BM', url: `${base}/r`, title: 'TDR - Ongata Rongai' });
+  assert.equal(j.county, 'Kajiado');
+});
+
+test('explicit "Junior" beats "Manager" in level inference', () => {
+  const j = normalizeJob({ source: 'MyJobMag Kenya', url: 'https://example.com/j1', title: 'Junior Office Manager', employer: 'Acme', description: 'x'.repeat(250) });
+  assert.equal(j.level, 'Junior');
+});

@@ -51,7 +51,9 @@ export async function crawlListing(ctx: RunCtx, o: {
           if (hrefs.size > 1) break;
           card = p;
         }
-        cards.set(u, o.parseCard(htmlToText(card.html() ?? '').split('\n'), text));
+        const lines = htmlToText(card.html() ?? '').split('\n');
+        if (process.env.CHECK_DEBUG) ctx.log(`CARD ${text}: ${JSON.stringify(lines.map((l) => l.trim()).filter(Boolean).slice(0, 16))}`);
+        cards.set(u, o.parseCard(lines, text));
       });
       const next = $('a[rel="next"]').attr('href') ?? $('.pagination .next a, li.next a, a.next').first().attr('href');
       const nu = next && absUrl(next, page);
