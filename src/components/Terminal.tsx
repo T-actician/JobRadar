@@ -14,7 +14,7 @@ export function Terminal({ lines }: { lines: LogLine[] }) {
   useEffect(() => { ref.current?.scrollTo({ top: ref.current.scrollHeight }); }, [lines]);
   return (
     <Panel title="Terminal" right={<span className="text-[10px] tracking-widest text-cyan/70">JobRadar</span>} className="h-full">
-      <div ref={ref} className="h-[5.5rem] overflow-y-auto text-xs text-ok">
+      <div ref={ref} className="h-[5.5rem] overflow-y-auto text-xs text-term">
         {lines.map((l, i) => <div key={i}>[{l.t}] {l.m}</div>)}
       </div>
     </Panel>
