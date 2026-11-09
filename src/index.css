@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: 3 11 20; --panel: 6 20 35; --line: 13 74 115; --cyan: 25 167 245;
+  --orange: 245 154 60; --ink: 143 179 204; --dim: 79 112 137; --ok: 46 230 138; --warn: 239 68 68;
+}
+.light {
+  --bg: 234 242 248; --panel: 255 255 255; --line: 127 181 216; --cyan: 10 120 189;
+  --orange: 196 96 10; --ink: 39 69 92; --dim: 106 132 153; --ok: 10 138 79; --warn: 200 30 30;
+}
+
+html, body, #root { height: 100%; }
+body {
+  @apply bg-bg font-mono text-ink;
+  background-image: radial-gradient(ellipse at 50% 0%, rgb(var(--cyan) / 0.08), transparent 60%);
+  background-attachment: fixed;
+}
+select option { background: rgb(var(--panel)); color: rgb(var(--ink)); }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: rgb(var(--line) / 0.6); }
+::-webkit-scrollbar-track { background: transparent; }
+
+.radar-sweep {
+  background: conic-gradient(from 0deg, transparent 0deg, transparent 280deg, rgb(var(--cyan) / 0.5) 360deg);
+  animation: radar-spin 4s linear infinite;
+}
+@keyframes radar-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .radar-sweep { animation: none; } }

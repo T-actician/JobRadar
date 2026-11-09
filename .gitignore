@@ -1,0 +1,17 @@
+node_modules/
+dist/
+dist-electron/
+release/
+out/
+*.log
+npm-debug.log*
+.env
+.env.*
+*.sqlite
+*.db
+.vscode/
+.idea/
+Desktop.ini
+desktop.ini
+Thumbs.db
+.DS_Store

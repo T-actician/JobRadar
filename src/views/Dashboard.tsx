@@ -1,0 +1,55 @@
+import { CardCtx, JobCard } from '../components/JobCard';
+import { Radar } from '../components/Radar';
+import { Panel } from '../components/ui';
+import { daysLeft } from '../lib/filters';
+import { timeAgo } from '../lib/format';
+import type { Job } from '../types';
+
+export interface Stat { label: string; value: number; onClick: () => void }
+
+export function Dashboard({ stats, latest, closing, lastCollected, ctx, onAll }: { stats: Stat[]; latest: Job[]; closing: Job[]; lastCollected: string; ctx: CardCtx; onAll: () => void }) {
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-[17rem_1fr] gap-4">
+        <Panel title="Radar">
+          <Radar />
+          <p className="mt-2 text-center text-[11px] text-dim">Last collection: <span className="text-orange">{timeAgo(lastCollected)}</span></p>
+        </Panel>
+        <div className="grid grid-cols-3 gap-4">
+          {stats.map((s) => (
+            <button key={s.label} onClick={s.onClick} className="relative border border-line/40 bg-panel/70 p-4 text-left transition hover:border-cyan focus:outline-none focus-visible:border-orange">
+              <div className="text-[11px] uppercase tracking-widest text-dim">{s.label}</div>
+              <div className="mt-2 text-3xl font-bold text-orange">{s.value}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-[1fr_20rem] gap-4">
+        <section>
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-xs font-bold uppercase tracking-[0.25em] text-cyan">Latest opportunities</h2>
+            <button onClick={onAll} className="text-[11px] uppercase tracking-widest text-orange hover:text-cyan">View all</button>
+          </div>
+          <div className="space-y-3">{latest.map((j) => <JobCard key={j.id} job={j} ctx={ctx} />)}</div>
+        </section>
+        <Panel title="Closing soon" className="h-fit">
+          {closing.length === 0 && <p className="text-xs text-dim">No deadlines in the next 14 days.</p>}
+          <ul className="space-y-3">
+            {closing.map((j) => {
+              const d = daysLeft(j.deadline);
+              return (
+                <li key={j.id}>
+                  <button onClick={() => ctx.open(j)} className="w-full text-left">
+                    <div className="text-xs text-cyan hover:text-orange">{j.title}</div>
+                    <div className="flex justify-between text-[11px] text-dim"><span className="truncate">{j.employer}</span><span className="shrink-0 text-orange">{d === 0 ? 'today' : `${d}d left`}</span></div>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </Panel>
+      </div>
+    </div>
+  );
+}
