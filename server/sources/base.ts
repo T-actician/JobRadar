@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio';
 import { absUrl, htmlToText, parseDetailPage } from '../extract';
+import { findDeadline } from '../normalize';
 import { politeFetch, RobotsBlocked } from '../http';
 import type { RawJob } from '../normalize';
 
@@ -22,8 +23,11 @@ export const looksLikeJob = (s: string): boolean => JOB_WORDS.test(s) && !NOT_JO
 /** Fetches listing pages, finds job links, and fetches only NEW detail pages. */
 export async function crawlListing(ctx: RunCtx, o: {
   source: string; listUrls: string[]; isJobLink: (url: URL) => boolean; followNext?: number;
+  /** optional: read employer/location/type/salary from the listing card text */
+  parseCard?: (lines: string[], title: string) => Partial<RawJob>;
 }): Promise<RunOut> {
   const links = new Map<string, string>();
+  const cards = new Map<string, Partial<RawJob>>();
   const queue = [...o.listUrls];
   let nextBudget = o.followNext ?? 0;
   let pagesOk = 0;
@@ -34,7 +38,20 @@ export async function crawlListing(ctx: RunCtx, o: {
       pagesOk++;
       $('a[href]').each((_, a) => {
         const u = absUrl($(a).attr('href') ?? '', page);
-        if (u && o.isJobLink(new URL(u)) && !links.has(u)) links.set(u, $(a).text().replace(/\s+/g, ' ').trim());
+        if (!u || !o.isJobLink(new URL(u)) || links.has(u)) return;
+        const text = $(a).text().replace(/\s+/g, ' ').trim();
+        links.set(u, text);
+        if (!o.parseCard || !text) return;
+        // climb to the largest ancestor that still contains only this one job link: that is the card
+        let card = $(a);
+        for (let i = 0; i < 8; i++) {
+          const p = card.parent();
+          if (!p.length || p.is('body')) break;
+          const hrefs = new Set(p.find('a[href]').map((__, x) => absUrl($(x).attr('href') ?? '', page)).get().filter((h): h is string => !!h && o.isJobLink(new URL(h))));
+          if (hrefs.size > 1) break;
+          card = p;
+        }
+        cards.set(u, o.parseCard(htmlToText(card.html() ?? '').split('\n'), text));
       });
       const next = $('a[rel="next"]').attr('href') ?? $('.pagination .next a, li.next a, a.next').first().attr('href');
       const nu = next && absUrl(next, page);
@@ -55,7 +72,10 @@ export async function crawlListing(ctx: RunCtx, o: {
       const d = parseDetailPage(await politeFetch(url));
       const title = d.title || links.get(url) || '';
       if (!title) continue;
-      jobs.push({ source: o.source, url, ...d, title, verified: true });
+      const c = cards.get(url) ?? {};
+      jobs.push({ source: o.source, url, ...d, title,
+        ...(c.employer ? { employer: c.employer } : {}), ...(c.location ? { location: c.location } : {}),
+        ...(c.typeText ? { typeText: c.typeText } : {}), ...(c.salaryText ? { salaryText: c.salaryText } : {}), verified: true });
     } catch (e) {
       ctx.log(`${o.source}: skipped ${url}: ${(e as Error).message}`, 'warn');
     }
@@ -64,7 +84,12 @@ export async function crawlListing(ctx: RunCtx, o: {
 }
 
 /** WordPress job blogs: RSS feed first, WP REST API as fallback. */
-export async function wpFeed(ctx: RunCtx, o: { source: string; base: string; pages?: number }): Promise<RunOut> {
+export async function wpFeed(ctx: RunCtx, o: {
+  source: string; base: string; pages?: number;
+  parseTitle?: (t: string) => { title: string; employer?: string };
+  /** fetch the post page when the feed text has no deadline (feeds are often truncated) */
+  detail?: boolean;
+}): Promise<RunOut> {
   const jobs: RawJob[] = [];
   const seen: string[] = [];
   const pages = o.pages ?? 2;
@@ -84,7 +109,8 @@ export async function wpFeed(ctx: RunCtx, o: { source: string; base: string; pag
         seen.push(url);
         if (ctx.known.has(url) || jobs.length >= ctx.maxNew * 2) return;
         const html = it.find('content\\:encoded').first().text() || it.find('description').first().text();
-        jobs.push({ source: o.source, url, title, postedAt: it.find('pubDate').first().text(), categoryText: cats, description: htmlToText(html) });
+        const pt = o.parseTitle?.(title) ?? { title };
+        jobs.push({ source: o.source, url, title: pt.title, employer: pt.employer, postedAt: it.find('pubDate').first().text(), categoryText: cats, description: htmlToText(html) });
       });
       if (!items.length) break;
     } catch (e) {
@@ -92,7 +118,23 @@ export async function wpFeed(ctx: RunCtx, o: { source: string; base: string; pag
       break;
     }
   }
-  if (feedOk) return { jobs, seen };
+  if (feedOk) {
+    if (o.detail) {
+      let n = 0;
+      for (const j of jobs) {
+        if (n >= ctx.maxNew) break;
+        if (findDeadline(j.description ?? '')) continue;
+        n++;
+        try {
+          const d = parseDetailPage(await politeFetch(j.url));
+          if ((d.description?.length ?? 0) > (j.description?.length ?? 0)) j.description = d.description;
+          if (d.deadline) j.deadline = d.deadline;
+          j.verified = true;
+        } catch (e) { ctx.log(`${o.source}: detail ${j.url} failed: ${(e as Error).message}`, 'warn'); }
+      }
+    }
+    return { jobs, seen };
+  }
 
   ctx.log(`${o.source}: RSS unavailable, trying WordPress REST API`);
   const raw = await politeFetch(`${o.base}/wp-json/wp/v2/posts?per_page=40&_fields=link,title,date_gmt,content`);

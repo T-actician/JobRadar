@@ -13,6 +13,8 @@ import { crawlListing, wpFeed } from './sources/base';
 import { normalizeJob, toDateOnly } from './normalize';
 import { parseDetailPage } from './extract';
 import { parseRobots, robotsAllows } from './http';
+import { brightermondayCard, careerPointTitle } from './sources/parsers';
+import { htmlToText } from './extract';
 
 let srv: http.Server;
 let base = '';
@@ -28,6 +30,7 @@ before(async () => {
     const u = req.url ?? '';
     if (u === '/robots.txt') { res.end('User-agent: *\nDisallow: /private/\n'); return; }
     if (u === '/jobs') { res.end('<a href="/job/a-1">A</a><a href="/job/b-2">B</a><a href="/about">x</a><a href="/private/job/c">p</a>'); return; }
+    if (u === '/cards') { res.end('<main><ul><li><div><h3><a href="/job/a-1">Graduate Electrical Engineer</a></h3><div>Card Employer Ltd</div><div>Posted 1 day ago</div><div>Kisumu Part Time KSh 50,000</div><a href="/job/a-1">Apply</a></div></li><li><div><h3><a href="/job/b-2">Other Role</a></h3><div>Second Co</div><div>Posted 2 days ago</div><div>Nakuru Full Time Confidential</div></div></li></ul></main>'); return; }
     if (u.startsWith('/job/')) { res.end(jobLd()); return; }
     if (u.startsWith('/feed')) {
       res.setHeader('content-type', 'application/xml');
@@ -108,4 +111,46 @@ test('database upsert: add, unchanged, updated; known urls skip refetch', () => 
 test('scam heuristics flag fee requests', () => {
   const j = normalizeJob({ source: 'Test', url: `${base}/s`, title: 'Data Entry', description: 'Pay a registration fee to start. Contact us on WhatsApp.' });
   assert.ok(j.flags.includes('Asks applicants to pay a fee'));
+});
+
+test('BrighterMonday card: employer, place, type and salary come from the listing', () => {
+  const html = `<div><div class="card"><span>T</span><h3><a href="/listings/x">Marketing Operations Manager</a></h3><div>Cobetwin Technical Limited</div><div>Posted 2 days ago</div>
+    <p><a href="/jobs/marketing">Marketing</a> - 3+ years of marketing experience</p><div>Nairobi Full Time KSh 75,000 - 90,000</div><a href="/listings/x">Apply</a></div></div>`;
+  const c = brightermondayCard(htmlToText(html).split('\n'), 'Marketing Operations Manager');
+  assert.equal(c.employer, 'Cobetwin Technical Limited');
+  assert.equal(c.location, 'Nairobi');
+  assert.equal(c.typeText, 'Full Time');
+  assert.equal(c.salaryText, 'KSh 75,000 - 90,000');
+  const conf = brightermondayCard(['Legal Officers', 'Takaful Insurance of Africa', 'Posted 1 week ago', 'Nairobi Full Time Confidential', 'Apply'], 'Legal Officers');
+  assert.equal(conf.employer, 'Takaful Insurance of Africa');
+  assert.equal(conf.salaryText, undefined);
+  const j = normalizeJob({ source: 'BM', url: `${base}/l`, title: 'Marketing Operations Manager', ...c });
+  assert.equal(j.salaryMin, 75000);
+  assert.equal(j.salaryMax, 90000);
+  assert.equal(j.type, 'Full-time');
+});
+
+test('Career Point titles split into title and employer', () => {
+  assert.deepEqual(careerPointTitle('YDN Director NGO Job CFK Africa'), { title: 'YDN Director', employer: 'CFK Africa' });
+  assert.deepEqual(careerPointTitle('Environment & Sustainability Consultant Trainers Job IRES'), { title: 'Environment & Sustainability Consultant Trainers', employer: 'IRES' });
+  assert.deepEqual(careerPointTitle('Plain title'), { title: 'Plain title' });
+});
+
+test('jobs abroad are flagged, "Job Type:" lines are read', () => {
+  const j = normalizeJob({ source: 'T', url: `${base}/d`, title: 'Warehouse Helper (Loading & Unloading) – Dubai, UAE', description: 'Job Type: Contract' });
+  assert.ok(j.flags.some((f) => f.startsWith('Job is outside Kenya')));
+  assert.equal(j.type, 'Contract');
+});
+
+test('crawl merges listing-card data over the detail page', async () => {
+  const out = await crawlListing({ known: new Set(), maxNew: 5, log: () => undefined }, {
+    source: 'Cards', listUrls: [`${base}/cards`], isJobLink: (u) => u.pathname.startsWith('/job/'), parseCard: brightermondayCard,
+  });
+  const a = out.jobs.find((j) => j.url.endsWith('a-1'))!;
+  assert.equal(a.employer, 'Card Employer Ltd');
+  assert.equal(a.location, 'Kisumu');
+  assert.equal(a.typeText, 'Part Time');
+  const b = out.jobs.find((j) => j.url.endsWith('b-2'))!;
+  assert.equal(b.employer, 'Second Co');
+  assert.equal(b.location, 'Nakuru');
 });

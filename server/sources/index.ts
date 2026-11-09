@@ -1,6 +1,7 @@
 import { politeFetch } from '../http';
 import type { RawJob } from '../normalize';
 import { type Adapter, crawlListing, wpFeed } from './base';
+import { brightermondayCard, careerPointTitle } from './parsers';
 
 const sameHost = (host: string) => (u: URL) => u.hostname.replace(/^www\./, '') === host;
 
@@ -19,23 +20,16 @@ export const ADAPTERS: Adapter[] = [
       source: 'BrighterMonday Kenya',
       listUrls: [1, 2, 3].map((p) => `https://www.brightermonday.co.ke/jobs${p > 1 ? `?page=${p}` : ''}`),
       isJobLink: (u) => sameHost('brightermonday.co.ke')(u) && /^\/listings\/[^/]+/.test(u.pathname),
+      parseCard: brightermondayCard,
     }),
   },
   {
     id: 'careerpoint', name: 'Career Point Kenya', homepage: 'https://www.careerpointkenya.co.ke/', kind: 'feed',
-    run: (ctx) => wpFeed(ctx, { source: 'Career Point Kenya', base: 'https://www.careerpointkenya.co.ke' }),
+    run: (ctx) => wpFeed(ctx, { source: 'Career Point Kenya', base: 'https://www.careerpointkenya.co.ke', parseTitle: careerPointTitle, detail: true }),
   },
   {
     id: 'openedcareer', name: 'Opened Career', homepage: 'https://openedcareer.com/', kind: 'feed',
     run: (ctx) => wpFeed(ctx, { source: 'Opened Career', base: 'https://openedcareer.com' }),
-  },
-  {
-    id: 'psc', name: 'PSC Kenya', homepage: 'https://www.psckjobs.go.ke/', kind: 'html',
-    run: (ctx) => crawlListing(ctx, {
-      source: 'PSC Kenya', followNext: 1,
-      listUrls: ['https://www.psckjobs.go.ke/'],
-      isJobLink: (u) => sameHost('psckjobs.go.ke')(u) && u.pathname.length > 6 && /vacanc|advert|job|position|recruit/i.test(u.pathname) && !/\.(pdf|docx?|xlsx?)$/i.test(u.pathname),
-    }),
   },
   {
     id: 'careerjet', name: 'Careerjet', homepage: 'https://www.careerjet.co.ke/', kind: 'api', needsKey: 'CAREERJET_API_KEY',

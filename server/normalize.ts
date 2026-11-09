@@ -189,6 +189,7 @@ function flagsFrom(text: string): string[] {
   return f;
 }
 
+const OVERSEAS = /\b(dubai|uae|u\.a\.e|qatar|doha|saudi|riyadh|kuwait|oman|bahrain|abu dhabi)\b/i;
 const clean = (s: string) => s.replace(/\s+/g, ' ').replace(/\s+[|–-]\s+(apply now|apply here).*$/i, '').trim();
 
 export function normalizeJob(raw: RawJob, now = new Date()): Job {
@@ -206,7 +207,8 @@ export function normalizeJob(raw: RawJob, now = new Date()): Job {
     ? categorise(`${title} ${employer}`.toLowerCase())
     : categorise(`${raw.categoryText ?? ''} ${description.slice(0, 500)}`.toLowerCase());
 
-  const type = typeFrom(title, `${raw.typeText ?? ''} ${raw.categoryText ?? ''}`);
+  const typeLine = description.match(/(?:job type|employment type|type of (?:employment|contract)|terms? of (?:employment|service))\s*[:\-–]\s*([^\n]{3,40})/i)?.[1] ?? '';
+  const type = typeFrom(title, `${raw.typeText ?? ''} ${raw.categoryText ?? ''} ${typeLine}`);
   const expMin = expFrom(body);
   const { level, inferred } = levelFrom(title, type, expMin);
 
@@ -248,6 +250,6 @@ export function normalizeJob(raw: RawJob, now = new Date()): Job {
     source: raw.source, sourceUrl: home, applyUrl: raw.applyUrl ?? raw.url,
     education: educationFrom(body), description,
     responsibilities: section(lines, HEAD_RESP), requirements: section(lines, HEAD_REQ), skills: [],
-    status: 'active', flags: flagsFrom(`${title}\n${description}`),
+    status: 'active', flags: [...flagsFrom(`${title}\n${description}`), ...(OVERSEAS.test(`${title} ${locText}`) ? ['Job is outside Kenya: confirm the agency is NEA-registered before paying or sharing documents'] : [])],
   };
 }
