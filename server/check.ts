@@ -6,6 +6,7 @@ import { log } from './log';
 const only = process.argv[2];
 const pct = (n: number, d: number) => (d ? `${Math.round((n / d) * 100)}%` : 'n/a');
 
+async function main(): Promise<void> {
 for (const a of ADAPTERS) {
   if (only && a.id !== only) continue;
   console.log(`\n=== ${a.name} (${a.kind}) ===`);
@@ -17,3 +18,6 @@ for (const a of ADAPTERS) {
     for (const j of jobs.slice(0, 3)) console.log(`  - ${j.title} | ${j.employer} | ${j.county} | ${j.type} | ${j.level} | deadline ${j.deadline ?? '-'}\n    ${j.applyUrl}`);
   } catch (e) { console.log(`FAILED: ${(e as Error).message}`); }
 }
+}
+
+main().then(() => process.exit(0), (e) => { console.error(e); process.exit(1); });
