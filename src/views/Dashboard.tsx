@@ -1,5 +1,5 @@
 import { CardCtx, JobCard } from '../components/JobCard';
-import { Radar } from '../components/Radar';
+import { Globe } from '../components/Globe';
 import { Panel } from '../components/ui';
 import { daysLeft } from '../lib/filters';
 import { timeAgo } from '../lib/format';
@@ -7,12 +7,12 @@ import type { Job } from '../types';
 
 export interface Stat { label: string; value: number; onClick: () => void }
 
-export function Dashboard({ stats, latest, closing, lastCollected, ctx, onAll }: { stats: Stat[]; latest: Job[]; closing: Job[]; lastCollected: string; ctx: CardCtx; onAll: () => void }) {
+export function Dashboard({ stats, counties, latest, closing, lastCollected, ctx, onAll }: { stats: Stat[]; counties: string[]; latest: Job[]; closing: Job[]; lastCollected: string; ctx: CardCtx; onAll: () => void }) {
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-[17rem_1fr] gap-4">
+      <div className="grid grid-cols-[23rem_1fr] gap-4">
         <Panel title="Radar">
-          <Radar />
+          <Globe counties={counties} />
           <p className="mt-2 text-center text-[11px] text-dim">Last collection: <span className="text-orange">{timeAgo(lastCollected)}</span></p>
         </Panel>
         <div className="grid grid-cols-3 gap-4">

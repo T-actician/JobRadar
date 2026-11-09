@@ -94,7 +94,7 @@ export default function App() {
 
   let content: React.ReactNode;
   if (view === 'dashboard') {
-    content = <Dashboard stats={stats} latest={sortJobs(live, 'newest', '').slice(0, 5)} closing={sortJobs(live.filter((j) => (daysLeft(j.deadline) ?? 99) <= 14), 'closing', '').slice(0, 6)} lastCollected={lastCollected} ctx={ctx} onAll={() => go('all')} />;
+    content = <Dashboard stats={stats} counties={live.map((j) => j.county)} latest={sortJobs(live, 'newest', '').slice(0, 5)} closing={sortJobs(live.filter((j) => (daysLeft(j.deadline) ?? 99) <= 14), 'closing', '').slice(0, 6)} lastCollected={lastCollected} ctx={ctx} onAll={() => go('all')} />;
   } else if (isList) {
     content = (
       <>
