@@ -1,7 +1,7 @@
 import { AlertTriangle, Bookmark, X } from 'lucide-react';
 import { useEffect } from 'react';
 import { daysLeft } from '../lib/filters';
-import { deadlineText, expText, fmtDate, openExternal, salaryText, timeAgo } from '../lib/format';
+import { deadlineText, expText, fmtDate, openExternal, salaryText, timeAgo, locText } from '../lib/format';
 import type { Job } from '../types';
 import { applyNow } from './JobCard';
 import { Badge, Btn, Field } from './ui';
@@ -49,7 +49,7 @@ export function JobDetail({ job, saved, tracked, onClose, onSave, onTrack, log }
         )}
 
         <div className="mt-5 grid grid-cols-2 gap-4 border border-line/40 bg-panel/70 p-4 md:grid-cols-3">
-          <Field label="Location" value={`${job.town}, ${job.county}`} />
+          <Field label="Location" value={locText(job)} />
           <Field label="Work mode" value={job.mode} />
           <Field label="Type" value={job.type} />
           <Field label={job.levelInferred ? 'Level (inferred)' : 'Level'} value={job.level} />

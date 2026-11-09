@@ -4,10 +4,10 @@ import { CardCtx, JobList } from './components/JobCard';
 import { JobDetail } from './components/JobDetail';
 import { NAV, Sidebar } from './components/Sidebar';
 import { Terminal, useLog } from './components/Terminal';
-import { Badge, Btn, INPUT, Select } from './components/ui';
+import { Badge, Btn, Empty, INPUT, Panel, Select } from './components/ui';
 import { ENGINEERING, TECH } from './constants';
-import { SAMPLE_JOBS } from './data/sampleJobs';
 import { applyFilters, daysLeft, emptyFilters, isExpired, postedOk, sortJobs } from './lib/filters';
+import { useBackend } from './lib/useBackend';
 import { useLocalStorage } from './lib/useLocalStorage';
 import type { AppRecord, Filters, Job, SavedSearch, Sort, View } from './types';
 import { Applications } from './views/Applications';
@@ -24,7 +24,6 @@ const BASE: Partial<Record<View, (j: Job) => boolean>> = {
   graduate: (j) => j.type === 'Graduate Trainee' || j.level === 'Graduate',
 };
 const SORTS: [string, string][] = [['newest', 'Newest first'], ['oldest', 'Oldest first'], ['closing', 'Closing soon'], ['relevance', 'Relevance']];
-const SOURCES = [...new Set(SAMPLE_JOBS.map((j) => j.source))].sort();
 
 export default function App() {
   const [theme, setTheme] = useLocalStorage<'dark' | 'light'>('jr.theme', 'dark');
@@ -39,20 +38,22 @@ export default function App() {
   const [open, setOpen] = useState<Job | null>(null);
   const { lines, log } = useLog();
   const booted = useRef(false);
+  const { status, jobs, sources: srcStates, lastCollected: lastCol, running, error, reload, collect, toggle: toggleSource } = useBackend(log);
+  const sourceNames = useMemo(() => [...new Set(jobs.map((j) => j.source))].sort(), [jobs]);
 
   useEffect(() => { document.documentElement.classList.toggle('light', theme === 'light'); }, [theme]);
   useEffect(() => {
     if (booted.current) return;
     booted.current = true;
     log('System online.');
-    log(`Loaded ${SAMPLE_JOBS.length} sample listings (Phase 1, live sources arrive in Phase 2).`);
+    log('Connecting to the JobRadar backend...');
   }, [log]);
   useEffect(() => setLimit(PAGE), [view, filters, sort]);
 
   const isList = LIST_VIEWS.includes(view);
-  const base = useMemo(() => SAMPLE_JOBS.filter(BASE[view] ?? (() => true)), [view]);
+  const base = useMemo(() => jobs.filter(BASE[view] ?? (() => true)), [jobs, view]);
   const results = useMemo(() => sortJobs(applyFilters(base, filters), sort, filters.q), [base, filters, sort]);
-  const byIds = (ids: string[]) => ids.map((id) => SAMPLE_JOBS.find((j) => j.id === id)).filter((j): j is Job => !!j);
+  const byIds = (ids: string[]) => ids.map((id) => jobs.find((j) => j.id === id)).filter((j): j is Job => !!j);
 
   const toggle = (j: Job) => {
     const on = saved.includes(j.id);
@@ -79,7 +80,7 @@ export default function App() {
   const submitSearch = () => { if (!isList) setView('all'); log(`Search: "${filters.q}"`); };
 
   const ctx: CardCtx = { saved, open: openJob, toggle, log };
-  const live = SAMPLE_JOBS.filter((j) => !isExpired(j));
+  const live = useMemo(() => jobs.filter((j) => !isExpired(j)), [jobs]);
   const stats = [
     { label: 'Total opportunities', value: live.length, onClick: () => go('all') },
     { label: 'Posted today', value: live.filter((j) => postedOk(j, 'today')).length, onClick: () => go('all', { posted: 'today' }) },
@@ -88,12 +89,18 @@ export default function App() {
     { label: 'Graduate programmes', value: live.filter((j) => BASE.graduate!(j)).length, onClick: () => go('graduate') },
     { label: 'Saved jobs', value: saved.length, onClick: () => go('saved') },
   ];
-  const lastCollected = SAMPLE_JOBS.reduce((m, j) => (j.collected > m ? j.collected : m), SAMPLE_JOBS[0].collected);
+  const lastCollected = lastCol ?? '';
   const title = NAV.find((n) => n.id === view)!.label;
   const noMatch = { title: 'No jobs match these filters', hint: 'Remove a filter or widen the posted date to see more listings.', action: <Btn variant="ghost" onClick={() => setFilters(emptyFilters)}>Clear filters</Btn> };
 
   let content: React.ReactNode;
-  if (view === 'dashboard') {
+  if (view !== 'settings' && status === 'loading') {
+    content = <Panel title="Connecting"><p className="text-xs text-ink">Loading jobs from the local backend...</p></Panel>;
+  } else if (view !== 'settings' && status === 'error') {
+    content = <Empty title="Backend not reachable" hint={`${error}. JobRadar needs its local backend. Start everything with: npm run dev`} action={<Btn variant="ghost" onClick={() => void reload()}>Retry</Btn>} />;
+  } else if (view !== 'settings' && jobs.length === 0) {
+    content = <Empty title={running ? 'Collecting jobs...' : 'No jobs collected yet'} hint={running ? 'The first collection takes a minute or two. Progress shows in the terminal below.' : 'Run a collection to fetch live jobs from your sources.'} action={!running && <Btn onClick={() => void collect()}>Collect now</Btn>} />;
+  } else if (view === 'dashboard') {
     content = <Dashboard stats={stats} counties={live.map((j) => j.county)} latest={sortJobs(live, 'newest', '').slice(0, 5)} closing={sortJobs(live.filter((j) => (daysLeft(j.deadline) ?? 99) <= 14), 'closing', '').slice(0, 6)} lastCollected={lastCollected} ctx={ctx} onAll={() => go('all')} />;
   } else if (isList) {
     content = (
@@ -111,11 +118,11 @@ export default function App() {
   } else if (view === 'recent') {
     content = <JobList jobs={byIds(recent)} ctx={ctx} empty={{ title: 'Nothing viewed yet', hint: 'Jobs you open will appear here.' }} />;
   } else if (view === 'applications') {
-    content = <Applications apps={apps} jobs={SAMPLE_JOBS} onChange={updateApp} onRemove={removeApp} onOpen={openJob} />;
+    content = <Applications apps={apps} jobs={jobs} onChange={updateApp} onRemove={removeApp} onOpen={openJob} />;
   } else if (view === 'alerts') {
     content = <Alerts searches={searches} onRun={runSearch} onDelete={(id) => setSearches(searches.filter((s) => s.id !== id))} />;
   } else {
-    content = <SettingsView theme={theme} setTheme={setTheme} />;
+    content = <SettingsView theme={theme} setTheme={setTheme} sources={srcStates} running={running} onCollect={(id) => void collect(id)} onToggle={(id, on) => void toggleSource(id, on)} />;
   }
 
   return (
@@ -123,11 +130,12 @@ export default function App() {
       <header className="flex items-center justify-between gap-4 border border-line/40 bg-panel/70 px-5 py-4">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-bold tracking-[0.3em] text-cyan">JOBRADAR</h1>
-          <Badge>Sample data</Badge>
+          <Badge tone={status === 'ready' ? (running ? 'cyan' : 'ok') : 'warn'}>{status !== 'ready' ? 'Offline' : running ? 'Collecting' : 'Live data'}</Badge>
         </div>
         <form className="flex gap-3" onSubmit={(e) => { e.preventDefault(); submitSearch(); }}>
           <input aria-label="Search jobs" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} placeholder="Search title, employer, skill" className={`${INPUT} w-80 py-2 text-sm`} />
           <Btn type="submit">Search</Btn>
+          <Btn type="button" variant="ghost" disabled={running || status !== 'ready'} onClick={() => void collect()}>{running ? 'Collecting...' : 'Refresh'}</Btn>
         </form>
       </header>
 
@@ -139,7 +147,7 @@ export default function App() {
         </main>
         {isList && (
           <aside className="w-72 shrink-0 overflow-y-auto">
-            <FilterPanel filters={filters} setFilters={setFilters} sources={SOURCES} searches={searches}
+            <FilterPanel filters={filters} setFilters={setFilters} sources={sourceNames} searches={searches}
               onSave={(name) => { setSearches([...searches, { id: String(Date.now()), name, filters }]); log(`Saved search: ${name}`); }}
               onApply={runSearch} onDelete={(id) => setSearches(searches.filter((s) => s.id !== id))} />
           </aside>

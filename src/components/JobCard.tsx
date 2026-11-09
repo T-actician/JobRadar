@@ -1,6 +1,6 @@
 import { Bookmark } from 'lucide-react';
 import { daysLeft, isExpired, isNew } from '../lib/filters';
-import { deadlineText, expText, fmtDate, openExternal } from '../lib/format';
+import { deadlineText, expText, fmtDate, openExternal, locText } from '../lib/format';
 import type { Job } from '../types';
 import { Badge, Btn, Empty, Field } from './ui';
 
@@ -34,7 +34,7 @@ export function JobCard({ job, ctx }: { job: Job; ctx: CardCtx }) {
         </button>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Field label="Location" value={`${job.town}, ${job.county}`} />
+        <Field label="Location" value={locText(job)} />
         <Field label="Type" value={job.type} />
         <Field label={job.levelInferred ? 'Level (inferred)' : 'Level'} value={job.level} />
         <Field label="Experience" value={expText(job)} />

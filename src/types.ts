@@ -1,6 +1,6 @@
-export type JobType = 'Full-time' | 'Part-time' | 'Contract' | 'Temporary' | 'Internship' | 'Industrial Attachment' | 'Graduate Trainee' | 'Apprenticeship' | 'Freelance';
-export type Level = 'Industrial Attachment' | 'Internship' | 'Graduate' | 'Entry-level' | 'Junior' | 'Mid-level' | 'Senior' | 'Managerial' | 'Executive';
-export type WorkMode = 'On-site' | 'Remote' | 'Hybrid';
+export type JobType = 'Full-time' | 'Part-time' | 'Contract' | 'Temporary' | 'Internship' | 'Industrial Attachment' | 'Graduate Trainee' | 'Apprenticeship' | 'Freelance' | 'Not specified';
+export type Level = 'Industrial Attachment' | 'Internship' | 'Graduate' | 'Entry-level' | 'Junior' | 'Mid-level' | 'Senior' | 'Managerial' | 'Executive' | 'Not specified';
+export type WorkMode = 'On-site' | 'Remote' | 'Hybrid' | 'Not specified';
 export type JobStatus = 'active' | 'updated' | 'expired';
 
 export interface Job {

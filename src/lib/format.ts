@@ -23,3 +23,8 @@ export const openExternal = (url: string) => {
   if (window.jobradar) void window.jobradar.openExternal(url);
   else window.open(url, '_blank', 'noopener');
 };
+
+export const locText = (j: Job): string => {
+  const parts = [j.town, j.county].filter((p) => p && p !== 'Not specified');
+  return parts.length ? [...new Set(parts)].join(', ') : 'Not specified';
+};

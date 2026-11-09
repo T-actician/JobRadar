@@ -13,7 +13,7 @@ export function Dashboard({ stats, counties, latest, closing, lastCollected, ctx
       <div className="grid grid-cols-[23rem_1fr] gap-4">
         <Panel title="Radar">
           <Globe counties={counties} />
-          <p className="mt-2 text-center text-[11px] text-dim">Last collection: <span className="text-orange">{timeAgo(lastCollected)}</span></p>
+          <p className="mt-2 text-center text-[11px] text-dim">Last collection: <span className="text-orange">{lastCollected ? timeAgo(lastCollected) : 'never'}</span></p>
         </Panel>
         <div className="grid grid-cols-3 gap-4">
           {stats.map((s) => (
