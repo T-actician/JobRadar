@@ -1,3 +1,4 @@
+import { SatelliteDish } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FilterPanel } from './components/FilterPanel';
 import { CardCtx, JobList } from './components/JobCard';
@@ -140,7 +141,14 @@ export default function App() {
     <div className="flex h-full flex-col gap-3 p-3">
       <header className="flex items-center justify-between gap-4 border border-line/40 bg-panel/70 px-5 py-4">
         <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold tracking-[0.3em] text-cyan">JOBRADAR</h1>
+          <div className="leading-none">
+            <h1 aria-label="JobRadar" className="flex items-center text-xl font-bold tracking-[0.3em] text-cyan">
+              <span aria-hidden="true">J</span>
+              <SatelliteDish aria-hidden="true" size={22} strokeWidth={2.4} className="mr-[0.3em]" />
+              <span aria-hidden="true">BRADAR</span>
+            </h1>
+            <p className="mt-1.5 text-[9px] tracking-widest text-dim">Powered by Tactician°™</p>
+          </div>
           <Badge tone={status === 'ready' ? (running ? 'cyan' : 'ok') : 'warn'}>{status !== 'ready' ? 'Offline' : running ? 'Collecting' : 'Live data'}</Badge>
         </div>
         <form className="flex gap-3" onSubmit={(e) => { e.preventDefault(); submitSearch(); }}>
