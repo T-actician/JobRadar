@@ -169,3 +169,14 @@ test('explicit "Junior" beats "Manager" in level inference', () => {
   const j = normalizeJob({ source: 'MyJobMag Kenya', url: 'https://example.com/j1', title: 'Junior Office Manager', employer: 'Acme', description: 'x'.repeat(250) });
   assert.equal(j.level, 'Junior');
 });
+
+test('country-only JSON-LD location falls back to the page data place', () => {
+  const ld = { '@context': 'https://schema.org', '@type': 'JobPosting', title: 'HR Manager', hiringOrganization: { name: 'Acme' }, jobLocation: { '@type': 'Place', address: { addressLocality: 'Kenya' } }, description: '<p>x</p>' };
+  const html = `<html><script type="application/ld+json">${JSON.stringify(ld)}</script><script>var d={"location_name":"Nairobi"};</script></html>`;
+  assert.equal(parseDetailPage(html).location, 'Nairobi');
+});
+
+test('page without JSON-LD still reads the place from page data', () => {
+  const html = '<html><head><meta property="og:title" content="HR Manager"></head><body><h1>HR Manager</h1><script>var d={"location_name":"Nairobi"};</script></body></html>';
+  assert.equal(parseDetailPage(html).location, 'Nairobi');
+});

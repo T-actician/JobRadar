@@ -55,10 +55,14 @@ export function parseDetailPage(html: string): Partial<RawJob> {
   if (jp) {
     const org = jp.hiringOrganization as Json | undefined;
     const types = ([] as unknown[]).concat((jp.employmentType as unknown) ?? []).map(String).join(' ');
+    // Some boards (BrighterMonday) put only "Kenya" in JSON-LD but state the real place in their page data.
+    let place = placeText(jp.jobLocation);
+    const pageData = html.match(/"location_name"\s*:\s*"([^"]{2,40})"/)?.[1];
+    if (pageData && (!place || /^(kenya|ke)(\s*,\s*(kenya|ke))*$/i.test(place.trim()))) place = pageData;
     return {
       title: str(jp.title), employer: str(org?.name) ?? str(jp.hiringOrganization),
       postedAt: str(jp.datePosted), deadline: str(jp.validThrough),
-      location: [placeText(jp.jobLocation), jp.jobLocationType === 'TELECOMMUTE' ? 'Remote' : ''].filter(Boolean).join(' '),
+      location: [place, jp.jobLocationType === 'TELECOMMUTE' ? 'Remote' : ''].filter(Boolean).join(' '),
       typeText: types, salaryText: salaryText(jp.baseSalary),
       description: htmlToText(str(jp.description) ?? ''),
     };
@@ -72,7 +76,7 @@ export function parseDetailPage(html: string): Partial<RawJob> {
   }
   if (!description) description = $('meta[property="og:description"]').attr('content') ?? $('meta[name="description"]').attr('content') ?? '';
   const posted = $('meta[property="article:published_time"]').attr('content') ?? $('time[datetime]').first().attr('datetime');
-  return { title, postedAt: posted, description };
+  return { title, postedAt: posted, description, location: html.match(/"location_name"\s*:\s*"([^"]{2,40})"/)?.[1] };
 }
 
 export const absUrl = (href: string, base: string): string | null => {
