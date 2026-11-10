@@ -6,7 +6,7 @@ export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
-      colors: { bg: c('bg'), panel: c('panel'), line: c('line'), cyan: c('cyan'), orange: c('orange'), ink: c('ink'), dim: c('dim'), ok: c('ok'), term: c('term'), warn: c('warn') },
+      colors: { bg: c('bg'), panel: c('panel'), line: c('line'), cyan: c('cyan'), orange: c('orange'), ink: c('ink'), dim: c('dim'), ok: c('ok'), term: c('term'), val: c('val'), warn: c('warn') },
       fontFamily: { sans: MONO, mono: MONO },
     },
   },

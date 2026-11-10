@@ -1,24 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Job } from '../types';
+import type { AppNotification, Job } from '../types';
 import { api, type SourceInfo } from './api';
 
 export interface BackendState {
   status: 'loading' | 'ready' | 'error';
   jobs: Job[]; sources: SourceInfo[]; lastCollected: string | null; running: boolean; error: string;
+  notes: AppNotification[]; unread: number;
 }
 
 /** Loads jobs from the local backend, streams its log into the terminal and reloads when a collection finishes. */
 export function useBackend(log: (m: string) => void) {
-  const [s, setS] = useState<BackendState>({ status: 'loading', jobs: [], sources: [], lastCollected: null, running: false, error: '' });
+  const [s, setS] = useState<BackendState>({ status: 'loading', jobs: [], sources: [], lastCollected: null, running: false, error: '', notes: [], unread: 0 });
   const lastLog = useRef(0);
   const wasRunning = useRef(false);
   const failing = useRef(true);
+  const notifSeq = useRef(-1);
 
   const load = useCallback(async () => {
     try {
-      const [j, src] = await Promise.all([api.jobs(), api.sources()]);
+      const [j, src, notes] = await Promise.all([api.jobs(), api.sources(), api.notifications()]);
       failing.current = false;
-      setS((p) => ({ ...p, status: 'ready', jobs: j.jobs, sources: src, lastCollected: j.lastCollected, error: '' }));
+      setS((p) => ({ ...p, status: 'ready', jobs: j.jobs, sources: src, lastCollected: j.lastCollected, error: '', notes, unread: notes.filter((n) => !n.read).length }));
     } catch (e) {
       failing.current = true;
       setS((p) => ({ ...p, status: 'error', error: (e as Error).message }));
@@ -38,6 +40,11 @@ export function useBackend(log: (m: string) => void) {
         else if (lastLog.current === 0) lastLog.current = h.lastLog;
         if (wasRunning.current && !h.running) await load();
         wasRunning.current = h.running;
+        if (h.notifSeq !== notifSeq.current) {
+          notifSeq.current = h.notifSeq;
+          const notes = await api.notifications();
+          setS((p) => ({ ...p, notes, unread: h.unread }));
+        }
         setS((p) => (p.running === h.running ? p : { ...p, running: h.running }));
       } catch {
         if (!failing.current) { failing.current = true; setS((p) => ({ ...p, status: 'error', error: 'Lost connection to the backend' })); }
@@ -54,5 +61,10 @@ export function useBackend(log: (m: string) => void) {
 
   const toggle = useCallback(async (id: string, enabled: boolean) => { await api.toggle(id, enabled); await load(); }, [load]);
 
-  return { ...s, reload: load, collect, toggle };
+  const markRead = useCallback(async () => {
+    await api.readAll();
+    setS((p) => ({ ...p, unread: 0, notes: p.notes.map((n) => ({ ...n, read: true })) }));
+  }, []);
+
+  return { ...s, reload: load, collect, toggle, markRead };
 }

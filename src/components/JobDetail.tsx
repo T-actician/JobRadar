@@ -28,7 +28,7 @@ export function JobDetail({ job, saved, tracked, onClose, onSave, onTrack, log }
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-bold text-cyan">{job.title}</h2>
-            <p className="mt-1 text-sm text-orange">{job.employer}</p>
+            <p className="mt-1 text-sm text-val">{job.employer}</p>
           </div>
           <button aria-label="Close" onClick={onClose} className="p-1 text-dim hover:text-cyan"><X size={18} /></button>
         </div>

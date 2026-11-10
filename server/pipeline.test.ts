@@ -44,7 +44,7 @@ before(async () => {
   });
   await new Promise<void>((r) => srv.listen(0, '127.0.0.1', r));
   base = `http://127.0.0.1:${(srv.address() as AddressInfo).port}`;
-  await openDb();
+  await openDb(`${process.env.JOBRADAR_DATA_DIR}/jobradar.db`);
 });
 after(() => { srv.close(); closeDb(); fs.rmSync(process.env.JOBRADAR_DATA_DIR!, { recursive: true, force: true }); });
 

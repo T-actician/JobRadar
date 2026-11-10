@@ -25,7 +25,7 @@ export function Btn({ variant = 'solid', className = '', ...p }: ButtonHTMLAttri
   return <button {...p} className={`px-3 py-1.5 text-xs font-bold uppercase tracking-widest transition focus:outline-none focus-visible:ring-1 focus-visible:ring-orange ${VARIANTS[variant]} ${className}`} />;
 }
 
-export const INPUT = 'block w-full border border-line/50 bg-bg px-2 py-1.5 text-xs text-orange placeholder:text-dim focus:border-cyan focus:outline-none';
+export const INPUT = 'block w-full border border-line/50 bg-bg px-2 py-1.5 text-xs text-val placeholder:text-dim focus:border-cyan focus:outline-none';
 
 export function Select({ label, value, onChange, options, any = true }: { label: string; value: string; onChange: (v: string) => void; options: readonly (readonly [string, string])[]; any?: boolean }) {
   return (
@@ -43,7 +43,7 @@ export const opts = (a: readonly string[]) => a.map((x) => [x, x] as const);
 export const Field = ({ label, value }: { label: string; value: string }) => (
   <div className="min-w-0">
     <div className="text-[10px] uppercase tracking-widest text-dim">{label}</div>
-    <div className="truncate text-xs text-orange">{value}</div>
+    <div className="truncate text-xs text-val">{value}</div>
   </div>
 );
 

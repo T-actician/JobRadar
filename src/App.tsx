@@ -5,11 +5,11 @@ import { JobDetail } from './components/JobDetail';
 import { NAV, Sidebar } from './components/Sidebar';
 import { Terminal, useLog } from './components/Terminal';
 import { Badge, Btn, Empty, INPUT, Panel, Select } from './components/ui';
-import { ENGINEERING, TECH } from './constants';
+import { DEFAULT_PREFS, ENGINEERING, TECH } from './constants';
 import { applyFilters, daysLeft, emptyFilters, isExpired, postedOk, sortJobs } from './lib/filters';
 import { useBackend } from './lib/useBackend';
-import { useLocalStorage } from './lib/useLocalStorage';
-import type { AppRecord, Filters, Job, SavedSearch, Sort, View } from './types';
+import { usePersisted } from './lib/usePersisted';
+import type { AppRecord, Filters, Job, Prefs, SavedSearch, Sort, View } from './types';
 import { Applications } from './views/Applications';
 import { Dashboard } from './views/Dashboard';
 import { Alerts, SettingsView } from './views/Misc';
@@ -26,11 +26,12 @@ const BASE: Partial<Record<View, (j: Job) => boolean>> = {
 const SORTS: [string, string][] = [['newest', 'Newest first'], ['oldest', 'Oldest first'], ['closing', 'Closing soon'], ['relevance', 'Relevance']];
 
 export default function App() {
-  const [theme, setTheme] = useLocalStorage<'dark' | 'light'>('jr.theme', 'dark');
-  const [saved, setSaved] = useLocalStorage<string[]>('jr.saved', []);
-  const [recent, setRecent] = useLocalStorage<string[]>('jr.recent', []);
-  const [apps, setApps] = useLocalStorage<Record<string, AppRecord>>('jr.apps', {});
-  const [searches, setSearches] = useLocalStorage<SavedSearch[]>('jr.searches', []);
+  const [theme, setTheme] = usePersisted<'dark' | 'light'>('theme', 'dark');
+  const [saved, setSaved] = usePersisted<string[]>('saved', []);
+  const [recent, setRecent] = usePersisted<string[]>('recent', []);
+  const [apps, setApps] = usePersisted<Record<string, AppRecord>>('apps', {});
+  const [searches, setSearches] = usePersisted<SavedSearch[]>('searches', []);
+  const [prefs, setPrefs] = usePersisted<Prefs>('prefs', DEFAULT_PREFS);
   const [view, setView] = useState<View>('dashboard');
   const [filters, setFilters] = useState<Filters>(emptyFilters);
   const [sort, setSort] = useState<Sort>('newest');
@@ -38,7 +39,8 @@ export default function App() {
   const [open, setOpen] = useState<Job | null>(null);
   const { lines, log } = useLog();
   const booted = useRef(false);
-  const { status, jobs, sources: srcStates, lastCollected: lastCol, running, error, reload, collect, toggle: toggleSource } = useBackend(log);
+  const { status, jobs, sources: srcStates, lastCollected: lastCol, running, error, reload, collect, toggle: toggleSource, notes, unread, markRead } = useBackend(log);
+  const [pendingJob, setPendingJob] = useState<string | null>(null);
   const sourceNames = useMemo(() => [...new Set(jobs.map((j) => j.source))].sort(), [jobs]);
 
   useEffect(() => { document.documentElement.classList.toggle('light', theme === 'light'); }, [theme]);
@@ -49,6 +51,15 @@ export default function App() {
     log('Connecting to the JobRadar backend...');
   }, [log]);
   useEffect(() => setLimit(PAGE), [view, filters, sort]);
+  // Clicking a desktop notification (or Open in Job Alerts) jumps straight to that job.
+  useEffect(() => window.jobradar?.onOpenJob(setPendingJob), []);
+  useEffect(() => {
+    if (!pendingJob) return;
+    const j = jobs.find((x) => x.id === pendingJob);
+    if (j) { openJob(j); setPendingJob(null); }
+    else if (status === 'ready') { log('That job is no longer in the list.'); setPendingJob(null); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingJob, jobs, status]);
 
   const isList = LIST_VIEWS.includes(view);
   const base = useMemo(() => jobs.filter(BASE[view] ?? (() => true)), [jobs, view]);
@@ -120,9 +131,9 @@ export default function App() {
   } else if (view === 'applications') {
     content = <Applications apps={apps} jobs={jobs} onChange={updateApp} onRemove={removeApp} onOpen={openJob} />;
   } else if (view === 'alerts') {
-    content = <Alerts searches={searches} onRun={runSearch} onDelete={(id) => setSearches(searches.filter((s) => s.id !== id))} />;
+    content = <Alerts searches={searches} onChange={setSearches} onRun={runSearch} notes={notes} onOpenJob={setPendingJob} onMarkRead={() => void markRead()} />;
   } else {
-    content = <SettingsView theme={theme} setTheme={setTheme} sources={srcStates} running={running} onCollect={(id) => void collect(id)} onToggle={(id, on) => void toggleSource(id, on)} />;
+    content = <SettingsView theme={theme} setTheme={setTheme} prefs={prefs} setPrefs={setPrefs} sources={srcStates} running={running} onCollect={(id) => void collect(id)} onToggle={(id, on) => void toggleSource(id, on)} />;
   }
 
   return (
@@ -140,7 +151,7 @@ export default function App() {
       </header>
 
       <div className="flex min-h-0 flex-1 gap-3">
-        <Sidebar view={view} onView={(v) => setView(v)} counts={{ saved: saved.length, applications: Object.keys(apps).length }} />
+        <Sidebar view={view} onView={(v) => setView(v)} counts={{ saved: saved.length, applications: Object.keys(apps).length, alerts: unread }} />
         <main className="min-w-0 flex-1 overflow-y-auto pr-1">
           <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.25em] text-cyan">{title}</h2>
           {content}
@@ -148,7 +159,7 @@ export default function App() {
         {isList && (
           <aside className="w-72 shrink-0 overflow-y-auto">
             <FilterPanel filters={filters} setFilters={setFilters} sources={sourceNames} searches={searches}
-              onSave={(name) => { setSearches([...searches, { id: String(Date.now()), name, filters }]); log(`Saved search: ${name}`); }}
+              onSave={(name) => { setSearches([...searches, { id: String(Date.now()), name, filters, notify: true, frequency: 'instant' }]); log(`Saved search: ${name}`); }}
               onApply={runSearch} onDelete={(id) => setSearches(searches.filter((s) => s.id !== id))} />
           </aside>
         )}

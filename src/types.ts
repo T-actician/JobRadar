@@ -44,6 +44,20 @@ export type Sort = 'newest' | 'oldest' | 'closing' | 'relevance';
 
 export type AppStatus = 'Interested' | 'Saved' | 'Preparing Application' | 'Applied' | 'Interviewing' | 'Shortlisted' | 'Rejected' | 'Successful' | 'Withdrawn';
 export interface AppRecord { status: AppStatus; date: string; contact: string; notes: string }
-export interface SavedSearch { id: string; name: string; filters: Filters }
+export interface SavedSearch { id: string; name: string; filters: Filters; notify?: boolean; frequency?: 'instant' | 'daily' }
+
+export interface Prefs {
+  /** show desktop notifications (they are always listed in Job Alerts) */
+  notify: boolean;
+  /** remind me before deadlines of saved jobs and applications in progress */
+  deadlines: boolean;
+  /** hour of day (0-23) for daily digests */
+  digestHour: number;
+  /** minutes between collections, per source overrides below */
+  defaultInterval: number;
+  intervals: Record<string, number>;
+}
+export type NoteKind = 'match' | 'deadline' | 'digest' | 'source';
+export interface AppNotification { id: number; kind: NoteKind; title: string; body: string; jobId: string | null; createdAt: string; delivered: boolean; read: boolean }
 
 export type View = 'dashboard' | 'all' | 'engineering' | 'technology' | 'internships' | 'attachments' | 'graduate' | 'saved' | 'applications' | 'alerts' | 'recent' | 'settings';

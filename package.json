@@ -11,8 +11,9 @@
     "start": "npm run build && electron .",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.electron.json --noEmit && tsc -p tsconfig.server.json --noEmit",
     "server": "tsx server/index.ts",
+    "db:clean-test": "tsx server/clean-test-data.ts",
     "collect:check": "tsx server/check.ts",
-    "test": "node --import tsx --test server/pipeline.test.ts"
+    "test": "node --import tsx --test server/pipeline.test.ts server/phase4.test.ts"
   },
   "dependencies": {
     "cheerio": "^1.2.0",
