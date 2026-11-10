@@ -26,7 +26,7 @@ const BASE: Partial<Record<View, (j: Job) => boolean>> = {
 const SORTS: [string, string][] = [['newest', 'Newest first'], ['oldest', 'Oldest first'], ['closing', 'Closing soon'], ['relevance', 'Relevance']];
 
 export default function App() {
-  const [theme, setTheme] = usePersisted<'dark' | 'light'>('theme', 'dark');
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark'); // always start in dark; light lasts for the current session only
   const [saved, setSaved] = usePersisted<string[]>('saved', []);
   const [recent, setRecent] = usePersisted<string[]>('recent', []);
   const [apps, setApps] = usePersisted<Record<string, AppRecord>>('apps', {});
