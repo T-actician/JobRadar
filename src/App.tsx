@@ -6,12 +6,14 @@ import { JobDetail } from './components/JobDetail';
 import { NAV, Sidebar } from './components/Sidebar';
 import { Terminal, useLog } from './components/Terminal';
 import { Badge, Btn, Empty, INPUT, Panel, Select } from './components/ui';
-import { DEFAULT_PREFS, ENGINEERING, TECH } from './constants';
+import { DEFAULT_PREFS, DEFAULT_PROFILE, ENGINEERING, TECH } from './constants';
 import { applyFilters, daysLeft, emptyFilters, isExpired, postedOk, sortJobs } from './lib/filters';
 import { useBackend } from './lib/useBackend';
 import { usePersisted } from './lib/usePersisted';
-import type { AppRecord, Filters, Job, Prefs, SavedSearch, Sort, View } from './types';
+import { hasProfile as profileReady, recommend, scoreJob } from './lib/match';
+import type { AppRecord, Filters, Job, MatchResult, Prefs, Profile, SavedSearch, Sort, View } from './types';
 import { Applications } from './views/Applications';
+import { ProfileView } from './views/Profile';
 import { Dashboard } from './views/Dashboard';
 import { Alerts, SettingsView } from './views/Misc';
 
@@ -33,6 +35,7 @@ export default function App() {
   const [apps, setApps] = usePersisted<Record<string, AppRecord>>('apps', {});
   const [searches, setSearches] = usePersisted<SavedSearch[]>('searches', []);
   const [prefs, setPrefs] = usePersisted<Prefs>('prefs', DEFAULT_PREFS);
+  const [profile, setProfile] = usePersisted<Profile>('profile', DEFAULT_PROFILE);
   const [view, setView] = useState<View>('dashboard');
   const [filters, setFilters] = useState<Filters>(emptyFilters);
   const [sort, setSort] = useState<Sort>('newest');
@@ -62,9 +65,22 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingJob, jobs, status]);
 
+  // How well each job fits the profile, and the jobs worth a look. Both recalculate only when jobs or the profile change.
+  const hasP = profileReady(profile);
+  const matchOf = useMemo(() => {
+    const m = new Map<string, MatchResult | null>();
+    if (hasP) for (const j of jobs) m.set(j.id, scoreJob(j, profile));
+    return m;
+  }, [jobs, profile, hasP]);
+  const recs = useMemo(() => recommend(jobs, profile, { saved, recent, apps }), [jobs, profile, saved, recent, apps]);
+
   const isList = LIST_VIEWS.includes(view);
   const base = useMemo(() => jobs.filter(BASE[view] ?? (() => true)), [jobs, view]);
-  const results = useMemo(() => sortJobs(applyFilters(base, filters), sort, filters.q), [base, filters, sort]);
+  const results = useMemo(() => {
+    const f = applyFilters(base, filters);
+    if (sort !== 'match') return sortJobs(f, sort, filters.q);
+    return [...f].sort((a, b) => (matchOf.get(b.id)?.score ?? -1) - (matchOf.get(a.id)?.score ?? -1) || b.published.localeCompare(a.published));
+  }, [base, filters, sort, matchOf]);
   const byIds = (ids: string[]) => ids.map((id) => jobs.find((j) => j.id === id)).filter((j): j is Job => !!j);
 
   const toggle = (j: Job) => {
@@ -91,7 +107,9 @@ export default function App() {
   const go = (v: View, f: Partial<Filters> = {}) => { setFilters({ ...emptyFilters, ...f }); setView(v); };
   const submitSearch = () => { if (!isList) setView('all'); log(`Search: "${filters.q}"`); };
 
-  const ctx: CardCtx = { saved, open: openJob, toggle, log };
+  const ctx: CardCtx = { saved, open: openJob, toggle, log, match: (j) => matchOf.get(j.id) ?? null };
+  const reasons = new Map(recs.map((r) => [r.job.id, r.reason]));
+  const recCtx: CardCtx = { ...ctx, note: (j) => reasons.get(j.id) };
   const live = useMemo(() => jobs.filter((j) => !isExpired(j)), [jobs]);
   const stats = [
     { label: 'Total opportunities', value: live.length, onClick: () => go('all') },
@@ -113,18 +131,22 @@ export default function App() {
   } else if (view !== 'settings' && jobs.length === 0) {
     content = <Empty title={running ? 'Collecting jobs...' : 'No jobs collected yet'} hint={running ? 'The first collection takes a minute or two. Progress shows in the terminal below.' : 'Run a collection to fetch live jobs from your sources.'} action={!running && <Btn onClick={() => void collect()}>Collect now</Btn>} />;
   } else if (view === 'dashboard') {
-    content = <Dashboard stats={stats} counties={live.map((j) => j.county)} latest={sortJobs(live, 'newest', '').slice(0, 5)} closing={sortJobs(live.filter((j) => (daysLeft(j.deadline) ?? 99) <= 14), 'closing', '').slice(0, 6)} lastCollected={lastCollected} ctx={ctx} onAll={() => go('all')} />;
+    content = <Dashboard stats={stats} counties={live.map((j) => j.county)} latest={sortJobs(live, 'newest', '').slice(0, 5)} closing={sortJobs(live.filter((j) => (daysLeft(j.deadline) ?? 99) <= 14), 'closing', '').slice(0, 6)} lastCollected={lastCollected} ctx={ctx} onAll={() => go('all')} mine={recs.slice(0, 4)} hasProfile={hasP} onProfile={() => setView('profile')} onRecommended={() => setView('recommended')} />;
   } else if (isList) {
     content = (
       <>
         <div className="mb-3 flex items-center justify-between">
           <span className="text-xs text-dim"><span className="text-orange">{results.length}</span> results</span>
-          <div className="w-44"><Select label="Sort" any={false} value={sort} onChange={(v) => setSort(v as Sort)} options={SORTS} /></div>
+          <div className="w-44"><Select label="Sort" any={false} value={sort} onChange={(v) => setSort(v as Sort)} options={hasP ? [...SORTS, ['match', 'Best match']] : SORTS} /></div>
         </div>
         <JobList jobs={results.slice(0, limit)} ctx={ctx} empty={noMatch} />
         {results.length > limit && <div className="mt-4 text-center"><Btn variant="ghost" onClick={() => setLimit(limit + PAGE)}>Load more</Btn></div>}
       </>
     );
+  } else if (view === 'recommended') {
+    content = <JobList jobs={recs.map((r) => r.job)} ctx={recCtx} empty={{ title: hasP ? 'No strong matches yet' : 'Nothing to recommend yet', hint: hasP ? 'Matches appear as new jobs are collected. Adding more skills or fields in My Profile widens the picks.' : 'Add your CV or preferences, or save and open a few jobs, and JobRadar will suggest jobs for you.', action: <Btn variant="ghost" onClick={() => setView('profile')}>Open My Profile</Btn> }} />;
+  } else if (view === 'profile') {
+    content = <ProfileView profile={profile} setProfile={setProfile} log={log} />;
   } else if (view === 'saved') {
     content = <JobList jobs={byIds(saved)} ctx={ctx} empty={{ title: 'No saved jobs', hint: 'Use the bookmark on any job to keep it here.' }} />;
   } else if (view === 'recent') {
@@ -175,7 +197,7 @@ export default function App() {
 
       <div className="h-[9.5rem] shrink-0"><Terminal lines={lines} /></div>
 
-      {open && <JobDetail job={open} saved={saved.includes(open.id)} tracked={!!apps[open.id]} onClose={() => setOpen(null)} onSave={() => toggle(open)} onTrack={() => track(open)} log={log} />}
+      {open && <JobDetail job={open} saved={saved.includes(open.id)} tracked={!!apps[open.id]} onClose={() => setOpen(null)} onSave={() => toggle(open)} onTrack={() => track(open)} log={log} match={matchOf.get(open.id) ?? null} onProfile={() => { setOpen(null); setView('profile'); }} />}
     </div>
   );
 }

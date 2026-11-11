@@ -2,6 +2,7 @@ import express from 'express';
 import { ADAPTERS } from './sources';
 import { PORT, SCHEDULER } from './config';
 import { closeDb, getState, jobCount, kvAll, kvSet, lastCollected, lastNotificationId, listJobs, listNotifications, markAllRead, markDelivered, openDb, setEnabled, sourceTotals, unreadCount } from './db';
+import { CvError, parseCv } from './cv';
 import { startScheduler, stopScheduler } from './scheduler';
 import { isRunning, runAll } from './collector';
 import { lastLogId, log, logSince } from './log';
@@ -12,6 +13,7 @@ export async function startServer(port = PORT) {
   await openDb();
   const app = express();
   app.disable('x-powered-by');
+  app.use('/api/cv', express.json({ limit: '8mb' })); // CV files arrive base64-encoded
   app.use(express.json({ limit: '400kb' }));
   app.use((req, res, next) => {
     const o = req.headers.origin;
@@ -47,12 +49,18 @@ export async function startServer(port = PORT) {
     res.json({ ok: true });
   });
   // The user's own data (saved jobs, applications, searches, preferences) lives here so alerts work while the window is closed.
-  const KEYS = new Set(['saved', 'recent', 'apps', 'searches', 'prefs', 'theme']);
+  const KEYS = new Set(['saved', 'recent', 'apps', 'searches', 'prefs', 'theme', 'profile']);
   app.get('/api/state', (_q, r) => r.json(Object.fromEntries(Object.entries(kvAll()).filter(([k]) => KEYS.has(k)))));
   app.put('/api/state/:key', (req, res) => {
     if (!KEYS.has(req.params.key) || req.body?.value === undefined) { res.sendStatus(400); return; }
     kvSet(req.params.key, req.body.value);
     res.json({ ok: true });
+  });
+  app.post('/api/cv/parse', async (req, res) => {
+    const { name, data } = req.body ?? {};
+    if (typeof name !== 'string' || typeof data !== 'string') { res.sendStatus(400); return; }
+    try { res.json({ text: await parseCv(name, Buffer.from(data, 'base64')) }); }
+    catch (e) { res.status(e instanceof CvError ? 422 : 500).json({ error: e instanceof CvError ? e.message : 'Could not read that file.' }); }
   });
   app.get('/api/notifications', (req, res) => res.json(listNotifications({ undelivered: req.query.undelivered === '1', limit: 50 })));
   app.post('/api/notifications/delivered', (req, res) => {

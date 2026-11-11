@@ -25,5 +25,11 @@ export const api = {
   put: (key: string, value: unknown) => req<{ ok: boolean }>(`/state/${key}`, { method: 'PUT', body: JSON.stringify({ value }) }),
   notifications: () => req<AppNotification[]>('/notifications'),
   readAll: () => req<{ ok: boolean }>('/notifications/read', { method: 'POST' }),
+  parseCv: async (name: string, data: string): Promise<string> => {
+    const res = await fetch(`${BASE}/cv/parse`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, data }) });
+    const body = (await res.json().catch(() => ({}))) as { text?: string; error?: string };
+    if (!res.ok || !body.text) throw new Error(body.error ?? 'Could not read that file.');
+    return body.text;
+  },
   toggle: (id: string, enabled: boolean) => req<{ ok: boolean }>(`/sources/${id}`, { method: 'PATCH', body: JSON.stringify({ enabled }) }),
 };

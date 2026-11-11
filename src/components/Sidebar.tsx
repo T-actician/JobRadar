@@ -1,8 +1,9 @@
-import { Bell, Bookmark, ClipboardList, Cpu, Factory, GraduationCap, History, LayoutDashboard, List, Settings, UserPlus, Wrench, type LucideIcon } from 'lucide-react';
+import { Bell, Bookmark, ClipboardList, Cpu, Factory, GraduationCap, History, LayoutDashboard, List, Settings, Sparkles, User, UserPlus, Wrench, type LucideIcon } from 'lucide-react';
 import type { View } from '../types';
 
 export const NAV: { id: View; label: string; icon: LucideIcon }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'recommended', label: 'Recommended', icon: Sparkles },
   { id: 'all', label: 'All Jobs', icon: List },
   { id: 'engineering', label: 'Engineering', icon: Wrench },
   { id: 'technology', label: 'Technology', icon: Cpu },
@@ -13,6 +14,7 @@ export const NAV: { id: View; label: string; icon: LucideIcon }[] = [
   { id: 'applications', label: 'My Applications', icon: ClipboardList },
   { id: 'alerts', label: 'Job Alerts', icon: Bell },
   { id: 'recent', label: 'Recently Viewed', icon: History },
+  { id: 'profile', label: 'My Profile', icon: User },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 

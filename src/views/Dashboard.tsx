@@ -1,13 +1,16 @@
 import { CardCtx, JobCard } from '../components/JobCard';
 import { Globe } from '../components/Globe';
-import { Panel } from '../components/ui';
+import { Btn, Panel } from '../components/ui';
 import { daysLeft } from '../lib/filters';
 import { timeAgo } from '../lib/format';
+import type { Rec } from '../lib/match';
+import { matchTone } from '../components/JobCard';
+import { Badge } from '../components/ui';
 import type { Job } from '../types';
 
 export interface Stat { label: string; value: number; onClick: () => void }
 
-export function Dashboard({ stats, counties, latest, closing, lastCollected, ctx, onAll }: { stats: Stat[]; counties: string[]; latest: Job[]; closing: Job[]; lastCollected: string; ctx: CardCtx; onAll: () => void }) {
+export function Dashboard({ stats, counties, latest, closing, lastCollected, ctx, onAll, mine, hasProfile, onProfile, onRecommended }: { stats: Stat[]; counties: string[]; latest: Job[]; closing: Job[]; lastCollected: string; ctx: CardCtx; onAll: () => void; mine: Rec[]; hasProfile: boolean; onProfile: () => void; onRecommended: () => void }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-[23rem_1fr] gap-4">
@@ -33,6 +36,21 @@ export function Dashboard({ stats, counties, latest, closing, lastCollected, ctx
           </div>
           <div className="space-y-3">{latest.map((j) => <JobCard key={j.id} job={j} ctx={ctx} />)}</div>
         </section>
+        <div className="space-y-4">
+        <Panel title="My opportunities" className="h-fit" right={mine.length > 0 ? <button onClick={onRecommended} className="text-[11px] uppercase tracking-widest text-orange hover:text-cyan">See all</button> : undefined}>
+          {mine.length === 0 && <p className="text-xs text-dim">{hasProfile ? 'No strong matches right now. New ones appear as jobs are collected.' : 'Add your CV or preferences to see jobs picked for you.'}</p>}
+          {mine.length === 0 && !hasProfile && <div className="mt-3"><Btn variant="ghost" onClick={onProfile}>Set up My Profile</Btn></div>}
+          <ul className="space-y-3">
+            {mine.map(({ job, match }) => (
+              <li key={job.id}>
+                <button onClick={() => ctx.open(job)} className="w-full text-left">
+                  <div className="text-xs text-cyan hover:text-orange">{job.title}</div>
+                  <div className="flex items-center justify-between gap-2 text-[11px] text-dim"><span className="truncate">{job.employer}</span>{match && <Badge tone={matchTone(match.score)}>{match.score}%</Badge>}</div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </Panel>
         <Panel title="Closing soon" className="h-fit">
           {closing.length === 0 && <p className="text-xs text-dim">No deadlines in the next 14 days.</p>}
           <ul className="space-y-3">
@@ -49,6 +67,7 @@ export function Dashboard({ stats, counties, latest, closing, lastCollected, ctx
             })}
           </ul>
         </Panel>
+        </div>
       </div>
     </div>
   );

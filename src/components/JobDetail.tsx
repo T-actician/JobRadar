@@ -2,8 +2,8 @@ import { AlertTriangle, Bookmark, X } from 'lucide-react';
 import { useEffect } from 'react';
 import { daysLeft } from '../lib/filters';
 import { deadlineText, expText, fmtDate, openExternal, salaryText, timeAgo, locText } from '../lib/format';
-import type { Job } from '../types';
-import { applyNow } from './JobCard';
+import type { Job, MatchResult } from '../types';
+import { applyNow, matchTone } from './JobCard';
 import { Badge, Btn, Field } from './ui';
 
 const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
@@ -12,9 +12,9 @@ const Section = ({ title, children }: { title: string; children: React.ReactNode
 const Bullets = ({ items }: { items: string[] }) =>
   items.length ? <ul className="list-inside list-disc space-y-1 text-xs text-ink">{items.map((i) => <li key={i}>{i}</li>)}</ul> : <p className="text-xs text-dim">Not specified</p>;
 
-interface Props { job: Job; saved: boolean; tracked: boolean; onClose: () => void; onSave: () => void; onTrack: () => void; log: (m: string) => void }
+interface Props { job: Job; saved: boolean; tracked: boolean; onClose: () => void; onSave: () => void; onTrack: () => void; log: (m: string) => void; match: MatchResult | null; onProfile: () => void }
 
-export function JobDetail({ job, saved, tracked, onClose, onSave, onTrack, log }: Props) {
+export function JobDetail({ job, saved, tracked, onClose, onSave, onTrack, log, match, onProfile }: Props) {
   useEffect(() => {
     const h = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', h);
@@ -59,6 +59,26 @@ export function JobDetail({ job, saved, tracked, onClose, onSave, onTrack, log }
           <Field label="Deadline" value={deadlineText(job, left)} />
           <Field label="Category" value={job.category} />
         </div>
+
+        <Section title="Your match">
+          {match ? (
+            <div className="border border-line/40 bg-panel/70 p-4 text-xs">
+              <div className="flex items-baseline gap-3"><span className="text-2xl font-bold text-val">{match.score}%</span><Badge tone={matchTone(match.score)}>{match.confidence < 0.5 ? 'Limited information' : 'Estimated match'}</Badge></div>
+              <ul className="mt-3 space-y-1">
+                {match.parts.map((p) => <li key={p.key} className="flex justify-between"><span className="text-ink">{p.label}</span><span className="text-val">{p.score === null ? 'Not enough information' : `${Math.round(p.score * 100)}%`}</span></li>)}
+              </ul>
+              {match.matched.length > 0 && <><div className="mt-3 text-[11px] uppercase tracking-widest text-dim">Skills you have</div><div className="mt-1 flex flex-wrap gap-2">{match.matched.map((s) => <Badge key={s} tone="ok">{s}</Badge>)}</div></>}
+              {match.missing.length > 0 && <><div className="mt-3 text-[11px] uppercase tracking-widest text-dim">Mentioned in the advert, not on your profile</div><div className="mt-1 flex flex-wrap gap-2">{match.missing.map((s) => <Badge key={s}>{s}</Badge>)}</div><p className="mt-1 text-[11px] text-dim">If you do have these, add them in My Profile so they count.</p></>}
+              {match.notes.length > 0 && <ul className="mt-3 list-inside list-disc space-y-1 text-ink">{match.notes.map((n) => <li key={n}>{n}</li>)}</ul>}
+              <p className="mt-3 text-[11px] text-dim">An estimate from your profile and this advert only. It does not say whether you qualify or will be shortlisted.</p>
+            </div>
+          ) : (
+            <div className="border border-line/40 bg-panel/70 p-4 text-xs text-ink">
+              No match shown. Add your CV or preferences in My Profile, or this advert has too little detail to compare.
+              <div className="mt-2"><Btn variant="ghost" onClick={onProfile}>Open My Profile</Btn></div>
+            </div>
+          )}
+        </Section>
 
         <Section title="Description"><p className="text-xs leading-relaxed text-ink">{job.description || 'Not specified'}</p></Section>
         <Section title="Responsibilities"><Bullets items={job.responsibilities} /></Section>

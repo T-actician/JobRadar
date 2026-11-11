@@ -1,4 +1,4 @@
-import type { AppStatus, Prefs } from './types';
+import type { AppStatus, Prefs, Profile } from './types';
 
 export const CATEGORIES = ['Electrical Engineering', 'Electronics Engineering', 'Civil Engineering', 'Mechanical Engineering', 'Software Engineering', 'Information Technology', 'Cybersecurity', 'Data Science', 'Networking', 'Telecommunications', 'Business and Finance', 'Accounting', 'Administration', 'Human Resources', 'Healthcare', 'Education', 'Science and Research', 'Manufacturing', 'Construction', 'Procurement', 'Logistics', 'Marketing', 'Sales', 'Agriculture', 'Hospitality', 'Government', 'NGOs', 'Other'];
 export const ENGINEERING = CATEGORIES.slice(0, 4);
@@ -32,3 +32,7 @@ export const DEFAULT_PREFS: Prefs = { notify: true, deadlines: true, digestHour:
 export const INTERVALS: [string, string][] = [['15', 'Every 15 min'], ['30', 'Every 30 min'], ['60', 'Every hour'], ['120', 'Every 2 hours'], ['360', 'Every 6 hours'], ['720', 'Every 12 hours']];
 /** Applications in these states still need action, so deadline reminders apply. */
 export const OPEN_APP_STATUSES: AppStatus[] = ['Interested', 'Saved', 'Preparing Application'];
+
+export const DEFAULT_PROFILE: Profile = { hasCv: false, cvName: '', cvText: '', cvAnalysedAt: null, skills: [], education: '', years: null, yearsSource: '', categories: [], counties: [], remoteOk: false };
+/** 1 = Certificate ... 5 = PhD; 0 = unknown */
+export const eduRank = (e: string | null | undefined): number => (e ? EDUCATION.indexOf(e) + 1 : 0);

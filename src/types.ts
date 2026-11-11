@@ -40,7 +40,7 @@ export interface Filters {
   q: string; category: string; type: string; level: string; exp: string; county: string;
   mode: string; source: string; education: string; posted: string; closing: string; salary: string; company: string;
 }
-export type Sort = 'newest' | 'oldest' | 'closing' | 'relevance';
+export type Sort = 'newest' | 'oldest' | 'closing' | 'relevance' | 'match';
 
 export type AppStatus = 'Interested' | 'Saved' | 'Preparing Application' | 'Applied' | 'Interviewing' | 'Shortlisted' | 'Rejected' | 'Successful' | 'Withdrawn';
 export interface AppRecord { status: AppStatus; date: string; contact: string; notes: string }
@@ -60,4 +60,24 @@ export interface Prefs {
 export type NoteKind = 'match' | 'deadline' | 'digest' | 'source';
 export interface AppNotification { id: number; kind: NoteKind; title: string; body: string; jobId: string | null; createdAt: string; delivered: boolean; read: boolean }
 
-export type View = 'dashboard' | 'all' | 'engineering' | 'technology' | 'internships' | 'attachments' | 'graduate' | 'saved' | 'applications' | 'alerts' | 'recent' | 'settings';
+export type View = 'dashboard' | 'all' | 'engineering' | 'technology' | 'internships' | 'attachments' | 'graduate' | 'saved' | 'applications' | 'alerts' | 'recent' | 'settings' | 'recommended' | 'profile';
+
+export interface Profile {
+  hasCv: boolean; cvName: string; cvText: string; cvAnalysedAt: string | null;
+  /** canonical skill names from the built-in list; the user can edit them */
+  skills: string[];
+  education: string;
+  years: number | null;
+  /** where the years figure came from: stated on the CV, estimated from dates, or entered by the user */
+  yearsSource: 'stated' | 'estimated' | 'you' | '';
+  categories: string[]; counties: string[]; remoteOk: boolean;
+}
+export interface MatchPart { key: 'skills' | 'field' | 'experience' | 'education' | 'location'; label: string; score: number | null; weight: number }
+export interface MatchResult {
+  /** 0-100 estimate from the parts that could be compared */
+  score: number;
+  /** share of the scoring weight that could be assessed (0-1); low means "based on limited information" */
+  confidence: number;
+  mode: 'cv' | 'preferences';
+  matched: string[]; missing: string[]; notes: string[]; parts: MatchPart[];
+}

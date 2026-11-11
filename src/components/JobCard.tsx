@@ -1,10 +1,11 @@
 import { Bookmark } from 'lucide-react';
 import { daysLeft, isExpired, isNew } from '../lib/filters';
 import { deadlineText, expText, fmtDate, openExternal, locText } from '../lib/format';
-import type { Job } from '../types';
+import type { Job, MatchResult } from '../types';
 import { Badge, Btn, Empty, Field } from './ui';
 
-export interface CardCtx { saved: string[]; open: (j: Job) => void; toggle: (j: Job) => void; log: (m: string) => void }
+export interface CardCtx { saved: string[]; open: (j: Job) => void; toggle: (j: Job) => void; log: (m: string) => void; match?: (j: Job) => MatchResult | null; note?: (j: Job) => string | undefined }
+export const matchTone = (score: number) => (score >= 70 ? 'ok' : score >= 45 ? 'cyan' : 'dim') as 'ok' | 'cyan' | 'dim';
 
 export function applyNow(j: Job, log: (m: string) => void) {
   openExternal(j.applyUrl);
@@ -14,6 +15,8 @@ export function applyNow(j: Job, log: (m: string) => void) {
 export function JobCard({ job, ctx }: { job: Job; ctx: CardCtx }) {
   const left = daysLeft(job.deadline);
   const saved = ctx.saved.includes(job.id);
+  const m = ctx.match?.(job) ?? null;
+  const note = ctx.note?.(job);
   return (
     <article tabIndex={0} role="button" onClick={() => ctx.open(job)} onKeyDown={(e) => e.key === 'Enter' && ctx.open(job)}
       className="relative cursor-pointer border border-line/40 bg-panel/70 p-4 transition hover:border-cyan focus:outline-none focus-visible:border-orange">
@@ -25,6 +28,7 @@ export function JobCard({ job, ctx }: { job: Job; ctx: CardCtx }) {
             {job.status === 'updated' && <Badge tone="cyan">Updated</Badge>}
             {isExpired(job) && <Badge tone="dim">Expired</Badge>}
             {job.flags.length > 0 && <Badge tone="warn">Warning</Badge>}
+            {m && <Badge tone={matchTone(m.score)}>{m.score}% match</Badge>}
           </div>
           <p className="mt-1 text-xs text-ink">{job.employer}</p>
         </div>
@@ -39,6 +43,7 @@ export function JobCard({ job, ctx }: { job: Job; ctx: CardCtx }) {
         <Field label={job.levelInferred ? 'Level (inferred)' : 'Level'} value={job.level} />
         <Field label="Experience" value={expText(job)} />
       </div>
+      {note && <p className="mt-2 text-[11px] text-dim">{note}</p>}
       <div className="mt-3 flex flex-wrap items-end justify-between gap-3 border-t border-line/30 pt-3">
         <div className="grid grid-cols-3 gap-x-6 gap-y-1">
           <Field label="Published" value={fmtDate(job.published)} />
