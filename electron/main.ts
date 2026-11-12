@@ -44,10 +44,14 @@ async function backendUp(): Promise<boolean> {
 }
 async function ensureBackend(): Promise<void> {
   if (dev || backend || quitting || (await backendUp())) return;
-  const out = fs.openSync(path.join(app.getPath('userData'), 'backend.log'), 'a');
-  backend = spawn(process.execPath, ['--import', 'tsx', 'server/index.ts'], {
-    cwd: app.getAppPath(), env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, windowsHide: true, stdio: ['ignore', out, out],
-  });
+  const home = app.getPath('userData');
+  fs.mkdirSync(home, { recursive: true });
+  const out = fs.openSync(path.join(home, 'backend.log'), 'a');
+  // Installed app: run the bundled server and keep the database in the user's profile (Program Files is read-only).
+  // Project folder: run the TypeScript source, as before.
+  const args = app.isPackaged ? [path.join(process.resourcesPath, 'server', 'server.cjs')] : ['--import', 'tsx', 'server/index.ts'];
+  const env = { ...process.env, ELECTRON_RUN_AS_NODE: '1', ...(app.isPackaged ? { JOBRADAR_DATA_DIR: path.join(home, 'data') } : {}) };
+  backend = spawn(process.execPath, args, { cwd: app.isPackaged ? home : app.getAppPath(), env, windowsHide: true, stdio: ['ignore', out, out] });
   backend.on('exit', () => { backend = null; });
 }
 
@@ -84,7 +88,7 @@ function createTray(): void {
   tray.on('click', showWindow);
 }
 
-const loginOpts = () => ({ path: process.execPath, args: [app.getAppPath(), '--hidden'] });
+const loginOpts = () => (app.isPackaged ? { args: ['--hidden'] } : { path: process.execPath, args: [app.getAppPath(), '--hidden'] });
 ipcMain.handle('login-item:get', () => app.getLoginItemSettings(loginOpts()).openAtLogin);
 ipcMain.handle('login-item:set', (_e, on: unknown) => {
   app.setLoginItemSettings({ openAtLogin: on === true, ...loginOpts() });
