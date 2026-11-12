@@ -80,7 +80,7 @@ export async function crawlListing(ctx: RunCtx, o: {
       const title = pt.title;
       const c = cards.get(url) ?? {};
       jobs.push({ source: o.source, url, ...d, title,
-        ...(c.employer ?? d.employer ?? pt.employer ? { employer: c.employer ?? d.employer ?? pt.employer } : {}), ...(c.location ? { location: c.location } : {}),
+        ...(c.employer ?? pt.employer ?? d.employer ? { employer: c.employer ?? pt.employer ?? d.employer } : {}), ...(c.location ? { location: c.location } : {}),
         ...(c.typeText ? { typeText: c.typeText } : {}), ...(c.salaryText ? { salaryText: c.salaryText } : {}), verified: true });
     } catch (e) {
       ctx.log(`${o.source}: skipped ${url}: ${(e as Error).message}`, 'warn');

@@ -23,11 +23,16 @@ export const ADAPTERS: Adapter[] = [
   },
   {
     id: 'corporatestaffing', name: 'Corporate Staffing Services', homepage: 'https://www.corporatestaffing.co.ke/jobs/', kind: 'html',
-    run: (ctx) => crawlListing(ctx, {
-      source: 'Corporate Staffing Services', parseTitle: corporateStaffingTitle,
-      listUrls: [1, 2, 3].map((p) => `https://www.corporatestaffing.co.ke/jobs/${p > 1 ? `page/${p}/` : ''}`),
-      isJobLink: (u) => sameHost('corporatestaffing.co.ke')(u) && /^\/job\/[^/]+\/?$/.test(u.pathname),
-    }),
+    run: async (ctx) => {
+      const out = await crawlListing(ctx, {
+        source: 'Corporate Staffing Services', parseTitle: corporateStaffingTitle,
+        listUrls: [1, 2, 3].map((p) => `https://www.corporatestaffing.co.ke/jobs/${p > 1 ? `page/${p}/` : ''}`),
+        isJobLink: (u) => sameHost('corporatestaffing.co.ke')(u) && /^\/job\/[^/]+\/?$/.test(u.pathname),
+      });
+      // When the advert names no employer, the agency itself is the only name on the page: say so instead of passing it off as the employer.
+      for (const j of out.jobs) if (!j.employer || /^corporate staffing( services)?$/i.test(j.employer.trim())) j.employer = 'Corporate Staffing (recruiter)';
+      return out;
+    },
   },
   {
     id: 'jobwebkenya', name: 'JobWeb Kenya', homepage: 'https://jobwebkenya.com/', kind: 'feed',

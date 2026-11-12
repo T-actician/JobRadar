@@ -31,7 +31,10 @@ const SECTOR = '(?:NGO|Government|Govt|Bank|Banking|Hospital|University|College|
 /** Corporate Staffing titles end in "Job <Employer>", but some give a place instead ("Accountant Job Nairobi, Kenya"). */
 export function corporateStaffingTitle(t: string): { title: string; employer?: string } {
   const r = careerPointTitle(t);
-  return r.employer && /^(nairobi|kenya|mombasa|kisumu|nakuru|eldoret|thika|remote)\b/i.test(r.employer) ? { title: r.title } : r;
+  // what follows "Job" is sometimes a place or a pay figure, e.g. "Job Nairobi, Kenya" or "Job (450-500K)"
+  const notEmployer = /^(nairobi|kenya|mombasa|kisumu|nakuru|eldoret|thika|remote)\b/i.test(r.employer ?? '') || /^\(?\s*(ksh?s?\.?\s*)?\d[\d,.\s\-–kKmM]*\)?$/.test(r.employer ?? '');
+  // with no real employer, keep the role as written ("Accountant - Manufacturing"), minus the "Job ..." tail and a trailing NGO/Government tag
+  return r.employer && notEmployer ? { title: t.replace(/\s+Jobs?\b.*$/i, '').replace(/\s+(NGO|Government|Govt)$/i, '').trim() } : r;
 }
 
 /** Career Point Kenya titles look like "YDN Director NGO Job CFK Africa". */

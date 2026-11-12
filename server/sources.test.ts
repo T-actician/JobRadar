@@ -21,11 +21,15 @@ before(async () => {
     const u = req.url ?? '';
     if (u === '/robots.txt') { res.end('User-agent: *\nDisallow: /wp-admin/\n'); return; }
     if (u === '/jobs/' || u === '/jobs/page/2/') {
-      res.end(`<main><a href="/job/sme-relationship-manager-job-absa-bank/">x</a><a href="/job/accountant-job-nairobi-kenya-css/">y</a>
+      res.end(`<main><a href="/job/sme-relationship-manager-job-absa-bank/">x</a><a href="/job/accountant-job-nairobi-kenya-css/">y</a><a href="/job/analyst-job-i-m-bank/">z</a>
         <a href="/jobs/page/2/">next</a><a href="/category/banking-jobs-in-kenya/">cat</a><a href="/cc/register-your-cv-for-free/">cv</a></main>`);
       return;
     }
     if (u.startsWith('/job/sme-relationship')) { res.end(detail('SME Relationship Manager -Voi Job Absa Bank')); return; }
+    if (u.startsWith('/job/analyst-job-i-m-bank')) {
+      const ld = { '@context': 'https://schema.org', '@type': 'JobPosting', title: 'Credit Analyst Job I&M Bank', datePosted: '2026-11-10', hiringOrganization: { name: 'Corporate Staffing' }, description: '<p>Assess credit applications. Bachelor\'s degree required.</p>' };
+      res.end(`<html><head><script type="application/ld+json">${JSON.stringify(ld)}</script></head><body><h1>Credit Analyst Job I&M Bank</h1></body></html>`); return;
+    }
     if (u.startsWith('/job/accountant')) { res.end(detail('Accountant Job Nairobi, Kenya')); return; }
     if (u.startsWith('/feed-jw/1')) {
       res.setHeader('content-type', 'application/xml');
@@ -49,6 +53,8 @@ test('Corporate Staffing titles split into role and employer; a place is not an 
   assert.deepEqual(corporateStaffingTitle('Head of Virtual Relationship Management Job I&M Bank'), { title: 'Head of Virtual Relationship Management', employer: 'I&M Bank' });
   assert.deepEqual(corporateStaffingTitle('Accountant Job Nairobi, Kenya'), { title: 'Accountant' });
   assert.deepEqual(corporateStaffingTitle('Treasury Officer'), { title: 'Treasury Officer' });
+  assert.deepEqual(corporateStaffingTitle('Legal Operations Associate – Programs NGO Job (450-500K)'), { title: 'Legal Operations Associate – Programs' }, 'pay figure is not an employer');
+  assert.deepEqual(corporateStaffingTitle('Accountant - Manufacturing Job 60-75K'), { title: 'Accountant - Manufacturing' });
 });
 
 test('Corporate Staffing crawl: only /job/ pages, site name removed from titles, employer and deadline read', async () => {
@@ -56,12 +62,14 @@ test('Corporate Staffing crawl: only /job/ pages, site name removed from titles,
     source: 'Corporate Staffing Services', parseTitle: corporateStaffingTitle, listUrls: [`${base}/jobs/`],
     isJobLink: (u) => /^\/job\/[^/]+\/?$/.test(u.pathname),
   });
-  assert.equal(out.seen.length, 2, 'category, CV and pagination links are not jobs');
+  assert.equal(out.seen.length, 3, 'category, CV and pagination links are not jobs');
   const jobs = out.jobs.map((r) => normalizeJob(r));
   const absa = jobs.find((j) => j.employer === 'Absa Bank')!;
   assert.equal(absa.title, 'SME Relationship Manager -Voi');
   assert.equal(absa.deadline, '2026-11-28');
   assert.equal(absa.county, 'Taita-Taveta', 'the title says Voi, which is in Taita-Taveta, and wins over the body text');
+  const analyst = jobs.find((j) => j.title === 'Credit Analyst')!;
+  assert.equal(analyst.employer, 'I&M Bank', 'the employer in the title beats the agency named in the page data');
   const acc = jobs.find((j) => j.title === 'Accountant')!;
   assert.ok(acc.employer === 'Not specified' || !/nairobi|kenya/i.test(acc.employer), acc.employer);
 });
