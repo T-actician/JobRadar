@@ -62,9 +62,17 @@ export function Alerts({ searches, onChange, onRun, notes, onOpenJob, onMarkRead
 const hours: [string, string][] = Array.from({ length: 24 }, (_, h) => [String(h), `${String(h).padStart(2, '0')}:00`]);
 const MANUAL = [
   { name: 'UN Jobs Kenya', url: 'https://unjobs.org/duty_stations/kenya', why: 'Blocks automated access, so JobRadar cannot read it.' },
+  { name: 'ReliefWeb (UN and NGO jobs)', url: 'https://reliefweb.int/jobs', why: 'Its official feed needs a free approved key, which JobRadar does not have yet.' },
   { name: 'Fuzu Kenya', url: 'https://www.fuzu.com/kenya/job', why: 'No public feed; its job list only loads inside a browser.' },
   { name: 'LinkedIn Jobs', url: 'https://www.linkedin.com/jobs/', why: 'Does not permit automated collection.' },
+  { name: 'Indeed Kenya', url: 'https://ke.indeed.com/', why: 'No public job feed, and it does not permit automated collection.' },
   { name: 'PSC Kenya', url: 'https://www.psckjobs.go.ke/', why: 'Adverts and applications are handled in its login portal.' },
+  { name: 'Remote OK', url: 'https://remoteok.com/', why: 'Remote jobs from anywhere, mostly tech. Its feed needs attribution, so JobRadar does not use it.' },
+  { name: 'We Work Remotely', url: 'https://weworkremotely.com/', why: 'Remote jobs from anywhere. Not added: remote-only and mostly outside Kenya.' },
+  { name: 'Jobicy', url: 'https://jobicy.com/', why: 'Remote jobs from anywhere. Not added: remote-only and mostly outside Kenya.' },
+  { name: 'Remotive', url: 'https://remotive.com/', why: 'Its terms do not allow passing its jobs on to other sites.' },
+  { name: 'Jooble Kenya', url: 'https://ke.jooble.org/', why: 'A search engine whose free key is tightly limited. Search it directly.' },
+  { name: 'Careerjet Kenya', url: 'https://www.careerjet.co.ke/', why: 'A search engine that needs a publisher key. Search it directly.' },
 ];
 
 interface SettingsProps {

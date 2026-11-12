@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { geoGraticule10, geoOrthographic, geoPath } from 'd3-geo';
+import { geoDistance, geoGraticule10, geoOrthographic, geoPath } from 'd3-geo';
 import { feature, mesh } from 'topojson-client';
 import type { GeometryCollection, Topology } from 'topojson-specification';
 import world from 'world-atlas/countries-110m.json';
@@ -65,13 +65,18 @@ export function Globe({ counties }: { counties: string[] }) {
         ctx.save(); ctx.beginPath(); ctx.arc(c, c, R, 0, 7); ctx.clip(); ctx.fillStyle = sw; ctx.fillRect(0, 0, SIZE, SIZE); ctx.restore();
       }
       // job blips (only the visible hemisphere)
+      // d3 still returns a position for points on the far side (mirrored onto the front), so hide those ourselves
+      const centre: [number, number] = [-lon, -lat];
       for (const [county, n] of counts.current) {
         const ll = COUNTY_COORDS[county]; if (!ll) continue;
+        const away = geoDistance(ll, centre); // radians from the middle of the visible face
+        if (away >= Math.PI / 2) continue;
+        const fade = Math.min(1, (Math.PI / 2 - away) / 0.2); // fade out at the edge instead of popping
         const p = proj(ll); if (!p) continue;
         const pulse = reduced ? 0.5 : (Math.sin(t * 3 + ll[0]) + 1) / 2;
         ctx.beginPath(); ctx.arc(p[0], p[1], 6 + pulse * 6 + Math.min(n, 5), 0, 7);
-        ctx.strokeStyle = rgb('orange', 0.6 - pulse * 0.45); ctx.lineWidth = 1.2; ctx.stroke();
-        ctx.beginPath(); ctx.arc(p[0], p[1], 3 + Math.min(n, 4) * 0.4, 0, 7); ctx.fillStyle = rgb('orange'); ctx.fill();
+        ctx.strokeStyle = rgb('orange', (0.6 - pulse * 0.45) * fade); ctx.lineWidth = 1.2; ctx.stroke();
+        ctx.beginPath(); ctx.arc(p[0], p[1], 3 + Math.min(n, 4) * 0.4, 0, 7); ctx.fillStyle = rgb('orange', fade); ctx.fill();
       }
       // scanlines
       ctx.fillStyle = rgb('bg', 0.18);

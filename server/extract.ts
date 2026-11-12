@@ -47,7 +47,7 @@ function salaryText(b: unknown): string | undefined {
   return `${cur} ${lo}${hi ? ` - ${hi}` : ''} ${str(v.unitText) ?? ''}`.trim();
 }
 
-const BOILERPLATE = /\s*[|–—-]\s*(brightermonday|myjobmag|career point|fuzu|jobs? in kenya|kenya).*$/i;
+const BOILERPLATE = /\s*[|–—-]\s*(brightermonday|myjobmag|career point|corporate staffing|jobweb|fuzu|jobs? in kenya|kenya).*$/i;
 
 export function parseDetailPage(html: string): Partial<RawJob> {
   const $ = cheerio.load(html);

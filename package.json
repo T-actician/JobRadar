@@ -13,7 +13,7 @@
     "server": "tsx server/index.ts",
     "db:clean-test": "tsx server/clean-test-data.ts",
     "collect:check": "tsx server/check.ts",
-    "test": "node --import tsx --test server/pipeline.test.ts server/phase4.test.ts server/phase5.test.ts"
+    "test": "node --import tsx --test server/pipeline.test.ts server/phase4.test.ts server/phase5.test.ts server/sources.test.ts"
   },
   "dependencies": {
     "cheerio": "^1.2.0",

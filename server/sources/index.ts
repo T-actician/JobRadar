@@ -1,5 +1,5 @@
 import { type Adapter, crawlListing, wpFeed } from './base';
-import { brightermondayCard, careerPointTitle } from './parsers';
+import { brightermondayCard, careerPointTitle, corporateStaffingTitle } from './parsers';
 
 const sameHost = (host: string) => (u: URL) => u.hostname.replace(/^www\./, '') === host;
 
@@ -19,6 +19,21 @@ export const ADAPTERS: Adapter[] = [
       listUrls: [1, 2, 3].map((p) => `https://www.brightermonday.co.ke/jobs${p > 1 ? `?page=${p}` : ''}`),
       isJobLink: (u) => sameHost('brightermonday.co.ke')(u) && /^\/listings\/[^/]+/.test(u.pathname),
       parseCard: brightermondayCard,
+    }),
+  },
+  {
+    id: 'corporatestaffing', name: 'Corporate Staffing Services', homepage: 'https://www.corporatestaffing.co.ke/jobs/', kind: 'html',
+    run: (ctx) => crawlListing(ctx, {
+      source: 'Corporate Staffing Services', parseTitle: corporateStaffingTitle,
+      listUrls: [1, 2, 3].map((p) => `https://www.corporatestaffing.co.ke/jobs/${p > 1 ? `page/${p}/` : ''}`),
+      isJobLink: (u) => sameHost('corporatestaffing.co.ke')(u) && /^\/job\/[^/]+\/?$/.test(u.pathname),
+    }),
+  },
+  {
+    id: 'jobwebkenya', name: 'JobWeb Kenya', homepage: 'https://jobwebkenya.com/', kind: 'feed',
+    run: (ctx) => wpFeed(ctx, {
+      source: 'JobWeb Kenya', base: 'https://jobwebkenya.com', pages: 3, detail: true, skip: /^(submit|send) cvs?\b/i,
+      feedUrl: (p) => `https://jobwebkenya.com/feed/?post_type=job_listing${p > 1 ? `&paged=${p}` : ''}`,
     }),
   },
   {

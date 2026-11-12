@@ -25,6 +25,8 @@ export async function crawlListing(ctx: RunCtx, o: {
   source: string; listUrls: string[]; isJobLink: (url: URL) => boolean; followNext?: number;
   /** optional: read employer/location/type/salary from the listing card text */
   parseCard?: (lines: string[], title: string) => Partial<RawJob>;
+  /** split the page title into role and employer (e.g. "Accountant Job Acme Ltd") */
+  parseTitle?: (title: string) => { title: string; employer?: string };
 }): Promise<RunOut> {
   const links = new Map<string, string>();
   const cards = new Map<string, Partial<RawJob>>();
@@ -72,11 +74,13 @@ export async function crawlListing(ctx: RunCtx, o: {
   for (const url of fresh) {
     try {
       const d = parseDetailPage(await politeFetch(url));
-      const title = d.title || links.get(url) || '';
-      if (!title) continue;
+      const rawTitle = d.title || links.get(url) || '';
+      if (!rawTitle) continue;
+      const pt = o.parseTitle?.(rawTitle) ?? { title: rawTitle };
+      const title = pt.title;
       const c = cards.get(url) ?? {};
       jobs.push({ source: o.source, url, ...d, title,
-        ...(c.employer ? { employer: c.employer } : {}), ...(c.location ? { location: c.location } : {}),
+        ...(c.employer ?? d.employer ?? pt.employer ? { employer: c.employer ?? d.employer ?? pt.employer } : {}), ...(c.location ? { location: c.location } : {}),
         ...(c.typeText ? { typeText: c.typeText } : {}), ...(c.salaryText ? { salaryText: c.salaryText } : {}), verified: true });
     } catch (e) {
       ctx.log(`${o.source}: skipped ${url}: ${(e as Error).message}`, 'warn');
@@ -88,6 +92,10 @@ export async function crawlListing(ctx: RunCtx, o: {
 /** WordPress job blogs: RSS feed first, WP REST API as fallback. */
 export async function wpFeed(ctx: RunCtx, o: {
   source: string; base: string; pages?: number;
+  /** custom feed address per page (default is {base}/feed/) */
+  feedUrl?: (page: number) => string;
+  /** posts whose title matches are not vacancies (e.g. "Submit CVs" collection posts) */
+  skip?: RegExp;
   parseTitle?: (t: string) => { title: string; employer?: string };
   /** fetch the post page when the feed text has no deadline (feeds are often truncated) */
   detail?: boolean;
@@ -98,7 +106,7 @@ export async function wpFeed(ctx: RunCtx, o: {
   let feedOk = false;
   for (let p = 1; p <= pages; p++) {
     try {
-      const xml = await politeFetch(`${o.base}/feed/${p > 1 ? `?paged=${p}` : ''}`);
+      const xml = await politeFetch(o.feedUrl ? o.feedUrl(p) : `${o.base}/feed/${p > 1 ? `?paged=${p}` : ''}`);
       const $ = cheerio.load(xml, { xmlMode: true });
       const items = $('item');
       feedOk = true;
@@ -107,12 +115,17 @@ export async function wpFeed(ctx: RunCtx, o: {
         const url = absUrl(it.find('link').first().text().trim(), o.base);
         const title = it.find('title').first().text().trim();
         const cats = it.find('category').map((__, c) => $(c).text()).get().join(', ');
-        if (!url || !title || seen.includes(url) || !looksLikeJob(`${title} ${cats}`)) return;
+        if (!url || !title || seen.includes(url) || o.skip?.test(title) || !looksLikeJob(`${title} ${cats}`)) return;
         seen.push(url);
         if (ctx.known.has(url) || jobs.length >= ctx.maxNew * 2) return;
         const html = it.find('content\\:encoded').first().text() || it.find('description').first().text();
         const pt = o.parseTitle?.(title) ?? { title };
-        jobs.push({ source: o.source, url, title: pt.title, employer: pt.employer, postedAt: it.find('pubDate').first().text(), categoryText: cats, description: htmlToText(html) });
+        // WP Job Manager feeds (JobWeb Kenya) state company, place and type in their own tags
+        const tag = (n: string) => it.find(`job_listing\\:${n}`).first().text().trim() || undefined;
+        const company = tag('company');
+        const suffix = company ? ` at ${company}` : '';
+        const role = suffix && pt.title.toLowerCase().endsWith(suffix.toLowerCase()) ? pt.title.slice(0, -suffix.length).trim() : pt.title;
+        jobs.push({ source: o.source, url, title: role, employer: company ?? pt.employer, location: tag('location'), typeText: tag('job_type'), postedAt: it.find('pubDate').first().text(), categoryText: cats, description: htmlToText(html) });
       });
       if (!items.length) break;
     } catch (e) {

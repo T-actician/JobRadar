@@ -28,6 +28,12 @@ export function brightermondayCard(lines: string[], title: string): Partial<RawJ
 }
 
 const SECTOR = '(?:NGO|Government|Govt|Bank|Banking|Hospital|University|College|School|Telecom|Health|Healthcare|Education|Engineering|ICT|Finance|Logistics|Sales|Marketing|Hotel|Hospitality|Security|Construction|Manufacturing|Agriculture|Insurance|Consultancy|Internship|Attachment|Graduate)';
+/** Corporate Staffing titles end in "Job <Employer>", but some give a place instead ("Accountant Job Nairobi, Kenya"). */
+export function corporateStaffingTitle(t: string): { title: string; employer?: string } {
+  const r = careerPointTitle(t);
+  return r.employer && /^(nairobi|kenya|mombasa|kisumu|nakuru|eldoret|thika|remote)\b/i.test(r.employer) ? { title: r.title } : r;
+}
+
 /** Career Point Kenya titles look like "YDN Director NGO Job CFK Africa". */
 export function careerPointTitle(t: string): { title: string; employer?: string } {
   const m = t.match(new RegExp(`^(.+?)\\s+(?:${SECTOR}\\s+)?Jobs?\\s+(?:at\\s+)?(.{2,80})$`, 'i'));
