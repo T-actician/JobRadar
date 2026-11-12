@@ -8,7 +8,12 @@ import { findSkills } from '../src/lib/skills';
 import type { Job, Profile } from '../src/types';
 import { CvError, parseCv } from './cv';
 
-const ahead = (d: number) => new Date(Date.now() + d * 864e5).toISOString().slice(0, 10);
+// Deadlines are local calendar dates, so "today" must be the local date (toISOString would give the UTC date, a day off for part of every day in Kenya)
+const ahead = (d: number) => {
+  const t = new Date();
+  t.setDate(t.getDate() + d);
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+};
 const job = (id: string, o: Partial<Job> = {}): Job => ({
   id, title: `Job ${id}`, employer: 'Acme', category: 'Electrical Engineering', type: 'Full-time', level: 'Junior', levelInferred: false, expMin: 1,
   county: 'Nairobi', town: 'Nairobi', mode: 'On-site', salaryMin: null, salaryMax: null, deadline: ahead(20), published: new Date().toISOString(),
