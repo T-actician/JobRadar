@@ -37,6 +37,12 @@ export function corporateStaffingTitle(t: string): { title: string; employer?: s
   return r.employer && notEmployer ? { title: t.replace(/\s+Jobs?\b.*$/i, '').replace(/\s+(NGO|Government|Govt)$/i, '').trim() } : r;
 }
 
+/** Corporate Staffing adverts open with a fact sheet ("Employer: ...", "Location: ..."). Employers they keep private are left out. */
+export function corporateStaffingFacts(text: string): Partial<RawJob> {
+  const employer = text.match(/^\s*Employer\s*:\s*(.{2,80})$/im)?.[1]?.trim();
+  return employer && !/confidential|undisclosed|not disclosed|not specified|^open$|^n\/a$|our client|corporate staffing/i.test(employer) ? { employer } : {};
+}
+
 /** Career Point Kenya titles look like "YDN Director NGO Job CFK Africa". */
 export function careerPointTitle(t: string): { title: string; employer?: string } {
   const m = t.match(new RegExp(`^(.+?)\\s+(?:${SECTOR}\\s+)?Jobs?\\s+(?:at\\s+)?(.{2,80})$`, 'i'));

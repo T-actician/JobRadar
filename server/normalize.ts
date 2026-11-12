@@ -143,6 +143,22 @@ const typeFrom = (title: string, extra: string): JobType | 'Not specified' => {
   return 'Not specified';
 };
 
+/** A level the advert states itself ("Job Level: Middle"), as opposed to one we infer from the title. */
+export function statedLevel(text: string): Level | null {
+  const v = text.match(/(?:job|career|experience) level\s*[:\-–]\s*([^\n]{3,30})/i)?.[1]?.toLowerCase();
+  if (!v) return null;
+  if (/intern/.test(v)) return 'Internship';
+  if (/attach/.test(v)) return 'Industrial Attachment';
+  if (/graduate|trainee/.test(v)) return 'Graduate';
+  if (/entry|beginner/.test(v)) return 'Entry-level';
+  if (/junior|\bjr\b/.test(v)) return 'Junior';
+  if (/mid|intermediate/.test(v)) return 'Mid-level';
+  if (/senior|\bsr\b/.test(v)) return 'Senior';
+  if (/manage|supervis/.test(v)) return 'Managerial';
+  if (/executive|director|c-level/.test(v)) return 'Executive';
+  return null;
+}
+
 function levelFrom(title: string, type: string, exp: number | null): { level: Level | 'Not specified'; inferred: boolean } {
   const t = title.toLowerCase();
   if (type === 'Industrial Attachment') return { level: 'Industrial Attachment', inferred: false };
@@ -213,7 +229,8 @@ export function normalizeJob(raw: RawJob, now = new Date()): Job {
   const typeLine = description.match(/(?:job type|employment type|type of (?:employment|contract)|terms? of (?:employment|service))\s*[:\-–]\s*([^\n]{3,40})/i)?.[1] ?? '';
   const type = typeFrom(title, `${raw.typeText ?? ''} ${raw.categoryText ?? ''} ${typeLine}`);
   const expMin = expFrom(body);
-  const { level, inferred } = levelFrom(title, type, expMin);
+  const said = statedLevel(description);
+  const { level, inferred } = said ? { level: said, inferred: false } : levelFrom(title, type, expMin);
 
   const dutyStation = description.match(/(?:duty station|job location|location|based in)\s*[:\-–]\s*([^\n.]{2,60})/i)?.[1];
   const locText = raw.location || dutyStation || '';

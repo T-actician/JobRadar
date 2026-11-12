@@ -1,5 +1,5 @@
 import { type Adapter, crawlListing, wpFeed } from './base';
-import { brightermondayCard, careerPointTitle, corporateStaffingTitle } from './parsers';
+import { brightermondayCard, careerPointTitle, corporateStaffingFacts, corporateStaffingTitle } from './parsers';
 
 const sameHost = (host: string) => (u: URL) => u.hostname.replace(/^www\./, '') === host;
 
@@ -25,7 +25,7 @@ export const ADAPTERS: Adapter[] = [
     id: 'corporatestaffing', name: 'Corporate Staffing Services', homepage: 'https://www.corporatestaffing.co.ke/jobs/', kind: 'html',
     run: async (ctx) => {
       const out = await crawlListing(ctx, {
-        source: 'Corporate Staffing Services', parseTitle: corporateStaffingTitle,
+        source: 'Corporate Staffing Services', parseTitle: corporateStaffingTitle, parseFacts: corporateStaffingFacts,
         listUrls: [1, 2, 3].map((p) => `https://www.corporatestaffing.co.ke/jobs/${p > 1 ? `page/${p}/` : ''}`),
         isJobLink: (u) => sameHost('corporatestaffing.co.ke')(u) && /^\/job\/[^/]+\/?$/.test(u.pathname),
       });

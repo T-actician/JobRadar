@@ -27,6 +27,8 @@ export async function crawlListing(ctx: RunCtx, o: {
   parseCard?: (lines: string[], title: string) => Partial<RawJob>;
   /** split the page title into role and employer (e.g. "Accountant Job Acme Ltd") */
   parseTitle?: (title: string) => { title: string; employer?: string };
+  /** read facts the advert states in its own text (e.g. an "Employer:" line) */
+  parseFacts?: (text: string) => Partial<RawJob>;
 }): Promise<RunOut> {
   const links = new Map<string, string>();
   const cards = new Map<string, Partial<RawJob>>();
@@ -77,10 +79,11 @@ export async function crawlListing(ctx: RunCtx, o: {
       const rawTitle = d.title || links.get(url) || '';
       if (!rawTitle) continue;
       const pt = o.parseTitle?.(rawTitle) ?? { title: rawTitle };
+      const facts = o.parseFacts?.(d.description ?? '') ?? {};
       const title = pt.title;
       const c = cards.get(url) ?? {};
       jobs.push({ source: o.source, url, ...d, title,
-        ...(c.employer ?? pt.employer ?? d.employer ? { employer: c.employer ?? pt.employer ?? d.employer } : {}), ...(c.location ? { location: c.location } : {}),
+        ...(c.employer ?? facts.employer ?? pt.employer ?? d.employer ? { employer: c.employer ?? facts.employer ?? pt.employer ?? d.employer } : {}), ...(c.location ? { location: c.location } : {}),
         ...(c.typeText ? { typeText: c.typeText } : {}), ...(c.salaryText ? { salaryText: c.salaryText } : {}), verified: true });
     } catch (e) {
       ctx.log(`${o.source}: skipped ${url}: ${(e as Error).message}`, 'warn');

@@ -86,3 +86,15 @@ test('JobWeb Kenya feed: company, place and type come from the feed; "Submit CVs
   assert.equal(j.deadline, '2026-11-30');
   assert.equal(j.education, 'Diploma');
 });
+
+test('Corporate Staffing fact sheet: employer and stated level are read, private employers are not guessed', async () => {
+  const { corporateStaffingFacts } = await import('./sources/parsers');
+  const sheet = (employer: string) => `Job Title: Site Operations Supervisor M/F\nJob Type: Full Time\nJob Level: Middle\nEmployer: ${employer}\nIndustry: Logistics\nSalary: Open\nLocation: Nairobi\nCountry: Kenya\nDeadline: 26/11/2026\n\nResponsible for managing daily operations.`;
+  assert.deepEqual(corporateStaffingFacts(sheet('Africa Global Logistics')), { employer: 'Africa Global Logistics' });
+  assert.deepEqual(corporateStaffingFacts(sheet('Confidential')), {});
+  const j = normalizeJob({ source: 'Corporate Staffing Services', url: 'https://x.test/j', title: 'Site Operations Supervisor', employer: 'Africa Global Logistics', description: sheet('Africa Global Logistics') });
+  assert.equal(j.level, 'Mid-level', 'the advert says Middle; the word "Supervisor" must not override it');
+  assert.equal(j.levelInferred, false);
+  assert.equal(j.county, 'Nairobi');
+  assert.equal(j.deadline, '2026-11-26');
+});
