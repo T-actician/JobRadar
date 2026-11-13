@@ -129,7 +129,7 @@ export default function App() {
   } else if (view !== 'settings' && status === 'error') {
     content = <Empty title="Backend not reachable" hint={`${error}. JobRadar needs its local backend. Start everything with: npm run dev`} action={<Btn variant="ghost" onClick={() => void reload()}>Retry</Btn>} />;
   } else if (view !== 'settings' && jobs.length === 0) {
-    content = <Empty title={running ? 'Collecting jobs...' : 'No jobs collected yet'} hint={running ? 'The first collection takes a minute or two. Progress shows in the terminal below.' : 'Run a collection to fetch live jobs from your sources.'} action={!running && <Btn onClick={() => void collect()}>Collect now</Btn>} />;
+    content = <Empty title={running ? 'Collecting jobs...' : 'No jobs collected yet'} hint={running ? 'The first collection takes about 5 minutes, because JobRadar visits each site politely, one page at a time. Jobs appear as each source finishes, and later collections are much quicker.' : 'Run a collection to fetch live jobs from your sources.'} action={!running && <Btn onClick={() => void collect()}>Collect now</Btn>} />;
   } else if (view === 'dashboard') {
     content = <Dashboard stats={stats} counties={live.map((j) => j.county)} latest={sortJobs(live, 'newest', '').slice(0, 5)} closing={sortJobs(live.filter((j) => (daysLeft(j.deadline) ?? 99) <= 14), 'closing', '').slice(0, 6)} lastCollected={lastCollected} ctx={ctx} onAll={() => go('all')} mine={recs.slice(0, 4)} hasProfile={hasP} onProfile={() => setView('profile')} onRecommended={() => setView('recommended')} />;
   } else if (isList) {

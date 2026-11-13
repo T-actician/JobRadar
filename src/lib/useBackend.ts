@@ -15,6 +15,8 @@ export function useBackend(log: (m: string) => void) {
   const wasRunning = useRef(false);
   const failing = useRef(true);
   const notifSeq = useRef(-1);
+  const jobCount = useRef(-1);
+  const lastReload = useRef(0);
 
   const load = useCallback(async () => {
     try {
@@ -38,7 +40,11 @@ export function useBackend(log: (m: string) => void) {
         for (const e of entries) log(e.level === 'info' ? e.m : `${e.level.toUpperCase()}: ${e.m}`);
         if (entries.length) lastLog.current = entries[entries.length - 1].id;
         else if (lastLog.current === 0) lastLog.current = h.lastLog;
-        if (wasRunning.current && !h.running) await load();
+        // Reload when a collection finishes, and during one whenever new jobs have been stored (at most every 15 s),
+        // so the first jobs appear as each source completes instead of after all of them.
+        const grew = h.jobs !== jobCount.current;
+        jobCount.current = h.jobs;
+        if ((wasRunning.current && !h.running) || (grew && (!h.running || Date.now() - lastReload.current > 15_000))) { lastReload.current = Date.now(); await load(); }
         wasRunning.current = h.running;
         if (h.notifSeq !== notifSeq.current) {
           notifSeq.current = h.notifSeq;
