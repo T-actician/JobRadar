@@ -4,6 +4,7 @@ import { INTERVALS } from '../constants';
 import type { SourceInfo } from '../lib/api';
 import { summarize } from '../lib/filters';
 import { openExternal, timeAgo } from '../lib/format';
+import { useUpdates } from '../lib/useUpdates';
 import type { AppNotification, Prefs, SavedSearch } from '../types';
 
 const KIND_TONE = { match: 'cyan', deadline: 'orange', digest: 'cyan', source: 'warn' } as const;
@@ -82,6 +83,12 @@ interface SettingsProps {
 
 export function SettingsView({ theme, setTheme, prefs, setPrefs, sources, running, onCollect, onToggle }: SettingsProps) {
   const desktop = window.jobradar?.desktop === true;
+  const up = useUpdates();
+  const upText = {
+    dev: 'Updates work in the installed app only.', idle: 'JobRadar checks for updates automatically every few hours.', checking: 'Checking for updates...', none: 'You have the latest version.',
+    available: `Version ${up.status.version ?? ''} found. Downloading...`, downloading: `Downloading version ${up.status.version ?? ''}${up.status.percent !== undefined ? ` (${up.status.percent}%)` : ''}...`,
+    downloaded: `Version ${up.status.version ?? ''} is ready. Restart to install it.`, error: up.status.error ?? 'Could not check for updates.',
+  }[up.status.state];
   const [login, setLogin] = useState<boolean | null>(null);
   useEffect(() => { if (desktop) void window.jobradar!.getLoginItem().then(setLogin); }, [desktop]);
   const setInterval_ = (id: string, v: string) => setPrefs({ ...prefs, intervals: { ...prefs.intervals, ...(v ? { [id]: Number(v) } : {}) } });
@@ -89,6 +96,18 @@ export function SettingsView({ theme, setTheme, prefs, setPrefs, sources, runnin
 
   return (
     <div className="space-y-4">
+      <Panel title="About and updates">
+        <div className="text-xs text-ink">JobRadar {up.version ? `version ${up.version}` : ''}</div>
+        <p className="mt-1 text-[11px] text-dim">{upText}</p>
+        {up.desktop && up.status.state !== 'dev' && (
+          <div className="mt-3 flex gap-2">
+            {up.status.state === 'downloaded'
+              ? <Btn onClick={up.install}>Restart and update</Btn>
+              : <Btn variant="ghost" disabled={['checking', 'available', 'downloading'].includes(up.status.state)} onClick={up.check}>Check for updates</Btn>}
+          </div>
+        )}
+      </Panel>
+
       <Panel title="Appearance">
         <div className="flex gap-2">
           <Btn variant={theme === 'dark' ? 'solid' : 'ghost'} onClick={() => setTheme('dark')}>Dark</Btn>

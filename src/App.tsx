@@ -10,6 +10,7 @@ import { DEFAULT_PREFS, DEFAULT_PROFILE, ENGINEERING, TECH } from './constants';
 import { applyFilters, daysLeft, emptyFilters, isExpired, postedOk, sortJobs } from './lib/filters';
 import { useBackend } from './lib/useBackend';
 import { usePersisted } from './lib/usePersisted';
+import { useUpdates } from './lib/useUpdates';
 import { hasProfile as profileReady, recommend, scoreJob } from './lib/match';
 import type { AppRecord, Filters, Job, MatchResult, Prefs, Profile, SavedSearch, Sort, View } from './types';
 import { Applications } from './views/Applications';
@@ -42,6 +43,8 @@ export default function App() {
   const [limit, setLimit] = useState(PAGE);
   const [open, setOpen] = useState<Job | null>(null);
   const { lines, log } = useLog();
+  const updates = useUpdates();
+  const [updateLater, setUpdateLater] = useState(false);
   const booted = useRef(false);
   const { status, jobs, sources: srcStates, lastCollected: lastCol, running, error, reload, collect, toggle: toggleSource, notes, unread, markRead } = useBackend(log);
   const [pendingJob, setPendingJob] = useState<string | null>(null);
@@ -179,6 +182,13 @@ export default function App() {
           <Btn type="button" variant="ghost" disabled={running || status !== 'ready'} onClick={() => void collect()}>{running ? 'Collecting...' : 'Refresh'}</Btn>
         </form>
       </header>
+
+      {updates.status.state === 'downloaded' && !updateLater && (
+        <div role="status" className="flex items-center justify-between gap-3 border border-cyan bg-cyan/10 px-4 py-2 text-xs text-cyan">
+          <span>JobRadar {updates.status.version} is ready to install.</span>
+          <span className="flex gap-2"><Btn onClick={updates.install}>Restart and update</Btn><Btn variant="ghost" onClick={() => setUpdateLater(true)}>Later</Btn></span>
+        </div>
+      )}
 
       <div className="flex min-h-0 flex-1 gap-3">
         <Sidebar view={view} onView={(v) => setView(v)} counts={{ saved: saved.length, applications: Object.keys(apps).length, alerts: unread }} />

@@ -1,5 +1,6 @@
 import { type ChildProcess, spawn } from 'child_process';
 import { app, BrowserWindow, ipcMain, Menu, nativeImage, Notification, shell, Tray } from 'electron';
+import { autoUpdater } from 'electron-updater';
 import fs from 'fs';
 import path from 'path';
 
@@ -76,6 +77,55 @@ async function pollNotifications(): Promise<void> {
   } catch { /* backend not up yet */ }
 }
 
+// ---- automatic updates (installed app only): checks GitHub Releases, downloads quietly, installs on restart ----
+type UpdateStatus = { state: 'dev' | 'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'none' | 'error'; version?: string; percent?: number; error?: string };
+let update: UpdateStatus = { state: app.isPackaged ? 'idle' : 'dev' };
+function setUpdate(u: UpdateStatus): void { update = u; win?.webContents.send('update-status', u); }
+function installUpdate(): void {
+  if (update.state !== 'downloaded') return;
+  quitting = true; // let the window close for real
+  autoUpdater.quitAndInstall(true, true); // silent install, then reopen JobRadar
+}
+function friendlyUpdateError(e: Error): string {
+  const m = e.message || '';
+  if (/ENOTFOUND|ETIMEDOUT|ECONNREFUSED|ECONNRESET|net::|EAI_AGAIN/i.test(m)) return 'Could not reach the update server. Check your internet connection.';
+  if (/latest\.yml|404|Not Found/i.test(m)) return 'No update information is published yet.';
+  return 'Could not check for updates.';
+}
+async function checkForUpdates(): Promise<void> {
+  if (!app.isPackaged || ['checking', 'downloading', 'downloaded'].includes(update.state)) return;
+  try { await autoUpdater.checkForUpdates(); } catch { /* reported through the error event */ }
+}
+function setupUpdates(): void {
+  if (!app.isPackaged) return;
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.allowPrerelease = false;
+  autoUpdater.logger = null;
+  autoUpdater.on('checking-for-update', () => setUpdate({ state: 'checking' }));
+  autoUpdater.on('update-available', (i) => setUpdate({ state: 'available', version: i.version }));
+  autoUpdater.on('update-not-available', () => setUpdate({ state: 'none' }));
+  autoUpdater.on('download-progress', (p) => setUpdate({ state: 'downloading', version: update.version, percent: Math.round(p.percent) }));
+  autoUpdater.on('update-downloaded', (i) => {
+    setUpdate({ state: 'downloaded', version: i.version });
+    if (Notification.isSupported()) {
+      const n = new Notification({ title: 'JobRadar update ready', body: `Version ${i.version} is ready. Click to restart and update.`, icon: ICON });
+      n.on('click', installUpdate);
+      n.show();
+    }
+  });
+  autoUpdater.on('error', (e) => {
+    try { fs.appendFileSync(path.join(app.getPath('userData'), 'update.log'), `${new Date().toISOString()} ${e.message}\n`); } catch { /* ignore */ }
+    setUpdate({ state: 'error', error: friendlyUpdateError(e) });
+  });
+  setTimeout(() => void checkForUpdates(), 20_000);
+  setInterval(() => void checkForUpdates(), 4 * 60 * 60 * 1000);
+}
+ipcMain.handle('app:version', () => app.getVersion());
+ipcMain.handle('update:status', () => update);
+ipcMain.handle('update:check', async () => { await checkForUpdates(); return update; });
+ipcMain.handle('update:install', () => installUpdate());
+
 function createTray(): void {
   tray = new Tray(nativeImage.createFromPath(ICON).resize({ width: 16, height: 16 }));
   tray.setToolTip('JobRadar: collecting in the background');
@@ -116,6 +166,7 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(() => {
     createWindow();
     createTray();
+    setupUpdates();
     void ensureBackend();
     setInterval(() => void ensureBackend(), 30_000);
     setInterval(() => void pollNotifications(), 15_000);

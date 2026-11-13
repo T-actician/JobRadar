@@ -62,6 +62,9 @@ export interface AppNotification { id: number; kind: NoteKind; title: string; bo
 
 export type View = 'dashboard' | 'all' | 'engineering' | 'technology' | 'internships' | 'attachments' | 'graduate' | 'saved' | 'applications' | 'alerts' | 'recent' | 'settings' | 'recommended' | 'profile';
 
+export type UpdateState = 'dev' | 'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'none' | 'error';
+export interface UpdateStatus { state: UpdateState; version?: string; percent?: number; error?: string }
+
 export interface Profile {
   hasCv: boolean; cvName: string; cvText: string; cvAnalysedAt: string | null;
   /** canonical skill names from the built-in list; the user can edit them */
