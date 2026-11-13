@@ -19,6 +19,7 @@ if (exists) {
   console.error(`Release ${tag} already exists. Raise the version first:\n  npm version <new version> --no-git-tag-version`);
   process.exit(1);
 }
-const notes = process.argv[2] || `JobRadar ${version}`;
+// npm splits a quoted note into separate words on Windows, so join them back together
+const notes = process.argv.slice(2).join(' ') || `JobRadar ${version}`;
 execFileSync(GH, ['release', 'create', tag, ...files, '--repo', REPO, '--title', `JobRadar ${version}`, '--notes', notes], { stdio: 'inherit' });
 console.log(`\nPublished ${tag}. Installed copies will update themselves within a few hours.`);
